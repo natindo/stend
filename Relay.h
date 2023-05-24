@@ -8,10 +8,10 @@
 class Relay {
 public:
     Relay(uint8_t r1, uint8_t r2, uint8_t r3, uint8_t r4);
-    std::string relayHandler(int relayNum, char *relayCommand);
+    void relayHandler(int relayNum, char relayCommand);
     std::string getStatus (int relayNum);
-    std::string turnON(int relayNum);
-    std::string turnOFF(int relayNum);
+    void turnON(int relayNum);
+    void turnOFF(int relayNum);
     std::string switchState(int relayNum);
 
 private:

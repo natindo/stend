@@ -14,30 +14,22 @@ Relay::Relay(uint8_t r1, uint8_t r2, uint8_t r3, uint8_t r4) : _relay1(r1), _rel
   digitalWrite(_relay4, HIGH);
 }
 
-std::string Relay::relayHandler(int relayNum, char *relayCommand) {
-  std::string tmp;
+void Relay::relayHandler(int relayNum, char relayCommand) {
+  //std::string tmp;
   if (relayNum < 0 || relayNum > 4) {
-    tmp = "Wrong relay number";
+    //tmp = "Wrong relay number";
     // strcpy(message, "Wrong relay number");
     // _udp.print("Wrong relay number");
-    return tmp;
+    //return tmp;
   }
 
-  if (strncmp(relayCommand, "STATUS", 6) == 0) {
-    tmp = getStatus(relayNum);
-  } else if (strncmp(relayCommand, "ON", 2) == 0) {
-    tmp = turnON(relayNum);
-  } else if (strncmp(relayCommand, "OFF", 3) == 0) {
-    tmp = turnOFF(relayNum);
-  } else if (strncmp(relayCommand, "SWITCH", 6) == 0) {
-    tmp = switchState(relayNum);
-  } else {
-    tmp = "No such relay command";
-    // strcpy(message, "No such relay command");
-    // _udp.print("No such relay command");
+  if (relayCommand == 1) {
+    //tmp = turnON(relayNum);
+  } else if (relayCommand == 0) {
+    //tmp = turnOFF(relayNum);
   }
   // Serial.println(tmp);
-  return tmp;
+  //return tmp;
 }
 
 std::string Relay::getStatus(int relayNum) {
@@ -64,64 +56,64 @@ std::string Relay::getStatus(int relayNum) {
   return tmp;
 }
 
-std::string Relay::turnON(int relayNum) {
-  std::string tmp;
+void Relay::turnON(int relayNum) {
+  //std::string tmp;
   switch (relayNum) {
     case 1:
       digitalWrite(_relay1, LOW);
-      tmp = "RELAY 1 ON";
+      //tmp = "RELAY 1 ON";
       // _udp.print("RELAY 1 ON");
       break;
     case 2:
       digitalWrite(_relay2, LOW);
-      tmp = "RELAY 2 ON";
+      //tmp = "RELAY 2 ON";
       // _udp.print("RELAY 2 ON");
       break;
     case 3:
       digitalWrite(_relay3, LOW);
-      tmp = "RELAY 3 ON";
+      //tmp = "RELAY 3 ON";
       // _udp.print("RELAY 3 ON");
       break;
     case 4:
       digitalWrite(_relay4, LOW);
-      tmp = "RELAY 4 ON";
+      //tmp = "RELAY 4 ON";
       // _udp.print("RELAY 4 ON");
       break;
   }
   // strcpy(message, tmp);
-  return tmp;
+  //return tmp;
 }
 
-std::string Relay::turnOFF(int relayNum) {
-  std::string tmp;
+void Relay::turnOFF(int relayNum) {
+  //std::string tmp;
   switch (relayNum) {
     case 1:
       digitalWrite(_relay1, HIGH);
-      tmp = "RELAY 1 OFF";
+      //tmp = "RELAY 1 OFF";
       // strcpy(tmp, "RELAY 1 OFF");
       // _udp.print("RELAY 1 OFF");
       break;
     case 2:
       digitalWrite(_relay2, HIGH);
-      tmp = "RELAY 2 OFF";
+      //tmp = "RELAY 2 OFF";
       // strcpy(tmp, "RELAY 2 OFF");
       // _udp.print("RELAY 2 OFF");
       break;
     case 3:
       digitalWrite(_relay3, HIGH);
-      tmp = "RELAY 3 OFF";
+      //tmp = "RELAY 3 OFF";
       // strcpy(tmp, "RELAY 3 OFF");
       // _udp.print("RELAY 3 OFF");
       break;
     case 4:
       digitalWrite(_relay4, HIGH);
-      tmp = "RELAY 4 OFF";
+      //tmp = "RELAY 4 OFF";
       // strcpy(tmp, "RELAY 4 OFF");
       // _udp.print("RELAY 4 OFF");
       break;
   }
   // strcpy(message, tmp);
-  return tmp;
+  //return tmp;
 }
 
 std::string Relay::switchState(int relayNum) {

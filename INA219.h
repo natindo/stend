@@ -20,6 +20,8 @@ public:
     float currentA3;
     float currentB1;
     float currentB2;
+
+    //std::atomic<bool> stopped{true};
 };
 
 #endif // INA219_H

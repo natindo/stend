@@ -1,5 +1,7 @@
 #include "lib.h"
 #include <WiFi.h>
+#include <cstring>
+#include <thread>
 #define _GLIBCXX_USE_CXX11_ABI 0
 
 #define RELAY_1 26
@@ -12,6 +14,8 @@
 
 #define SDA_2 19
 #define SCL_2 21
+
+#define MSG_BUFF_SIZE 150
 
 Adafruit_INA219 ina219_A1;
 Adafruit_INA219 ina219_A2(0x41);
@@ -61,11 +65,21 @@ void setup() {
   WifiInit();
 }
 
+struct Data
+{
+  
+};
+
 void loop() {
 //
+  //Ina data_ina;
+  //Adafruit_INA219 &ina219_A1, Adafruit_INA219 &ina219_A2, Adafruit_INA219 &ina219_A3, Adafruit_INA219 &ina219_B1, Adafruit_INA219 &ina219_B2
+  
+  //std::thread th(&Ina::getVoltage, std::ref(Ina), std::ref(ina219_A1), std::ref(ina219_A2), std::ref(ina219_A3), std::ref(ina219_B1), std::ref(ina219_B2));
+  
   while (!isConnectToServer) {
     //connect to server
-    const uint16_t port = 2014; // port TCP server
+    const uint16_t port = 2001; // port TCP server
     const char * host = "192.168.88.212"; // ip or dns
     Serial.print("Connecting to ");
     Serial.println(host);
@@ -84,7 +98,7 @@ void loop() {
     serv.authToServer(client);
     Serial.println("authToServer");
     isAuthToServer = true;
-    delay (3000);
+    delay (500);
   }
 
   if (!isAuthFromServer) {
@@ -93,8 +107,6 @@ void loop() {
     isAuthFromServer = true;
   }
 
-  
-  
   // Получение статусов модуля реле
   groupOut1.status = (digitalRead(RELAY_1) == LOW) ? 1 : 0;
   groupOut2.status = (digitalRead(RELAY_2) == LOW) ? 1 : 0;
@@ -114,22 +126,45 @@ void loop() {
     ina219_B1.begin (&I2Ctwo);
     ina219_B2.begin (&I2Ctwo);
 
-    float shuntvoltageA1 = ina219_A1.getBusVoltage_V();
-    float shuntvoltageA2 = ina219_A2.getBusVoltage_V();
-    float shuntvoltageA3 = ina219_A3.getBusVoltage_V();
-    float shuntvoltageB1 = ina219_B1.getBusVoltage_V();
-    float shuntvoltageB2 = ina219_B2.getBusVoltage_V();
-
-    groupOut1.setV(shuntvoltageA1);
-    groupOut2.setV(shuntvoltageA2);
-    groupOut3.setV(shuntvoltageA3);
-
-//  ina.getCurrent(ina219_A1, ina219_A2, ina219_A3, ina219_B1, ina219_B2);
-//  groupOut1.setA(ina.currentA1);
-//  groupOut2.setA(ina.currentA2);
-//  groupOut3.setA(ina.currentA3);
+//    float shuntvoltageA1 = ina219_A1.getShuntVoltage_mV();
+//    float shuntvoltageA2 = ina219_A2.getShuntVoltage_mV();
+//    float shuntvoltageA3 = ina219_A3.getShuntVoltage_mV();
+//    float shuntvoltageB1 = ina219_B1.getBusVoltage_V();
+//    float shuntvoltageB2 = ina219_B2.getBusVoltage_V();
 //
-//  client.print(groupOut1.getA());
+//    groupOut1.setV(shuntvoltageA1);
+//    groupOut2.setV(shuntvoltageA2);
+//    groupOut3.setV(shuntvoltageA3);
+//
+//  infoToServer.pzemTimer = millis();
+//
+//    pzemClass.setV(pzem.voltage(pzemIP));
+//    if (pzemClass.getV() >= 0.0) {
+//      input.setAc_v(pzemClass.getV());
+//    }
+//
+//    pzemClass.setA(pzem.current(pzemIP));
+//    if(pzemClass.getA() >= 0.0) { 
+//      input.setAc_a(pzemClass.getA());
+//    }
+
+    static char buffer[MSG_BUFF_SIZE] = { 0 };
+    
+    while (client.connected()) { 
+
+
+
+
+//    Serial.println(shuntvoltageA1);
+//    Serial.println(shuntvoltageA2);
+//    Serial.println(shuntvoltageA2);
+    
+//    float shuntvoltageB1 = ina219_B1.getBusVoltage_V();
+//    float shuntvoltageB2 = ina219_B2.getBusVoltage_V();
+//
+//    groupOut1.setV(shuntvoltageA1);
+//    groupOut2.setV(shuntvoltageA2);
+//    groupOut3.setV(shuntvoltageA3);
 
   infoToServer.pzemTimer = millis();
 
@@ -143,48 +178,100 @@ void loop() {
       input.setAc_a(pzemClass.getA());
     }
 
-//    while (client.available()){
-//      char c = client.read();
-//      Serial.print(c);
-//    }
 
-//    Serial.println(groupOut1.getV());
-//    Serial.println(groupOut2.getV());
-//    Serial.println(groupOut3.getV());
-//    Serial.println(groupOut1.getA());
-//    Serial.println(groupOut2.getA());
-//    Serial.println(groupOut3.getA());
-//    Serial.println();
+      
+      bool isSendData = false;
+      bool isRelaySwitch = false;
+    uint size = client.available();
 
-    //serv.requestSendData(client, groupOut1, groupOut2, groupOut3, groupInputSolar, groupInputWind, pzemClass, battery);
-  //groupInputSolar.getV();
+    if (size) {
+      uint openings = 0;
+      uint closures = 0;
 
-  int countForward = 0;
-  while (client.available()) {
-    char c = client.read();
-    Serial.print("     ");
-    Serial.print(countForward);
-    Serial.println(c);
-    
-    if ((countForward == 8) && (c == '3')) {
-      const char* sendDataToServer = "{\"type\": 3, \"data\": {\"solar\": [%4.2f, %4.2f, %d], \"wind\": [%4.2f, %4.2f, %d], \"gen\": [%4.2f, %4.2f, %d], \"bat\": [%4.2f], \"1\": [%4.2f, %4.2f, %d], \"2\": [%4.2f, %4.2f, %d], \"3\": [%4.2f, %4.2f, %d]}}\n";
-      char AlreadyDataToServer[1000];
-      sprintf(AlreadyDataToServer, sendDataToServer, groupInputSolar.getV(), groupInputSolar.getA(), groupInputSolar.status, groupInputWind.getV(), groupInputWind.getA(), groupInputWind.status, pzemClass.getV(), pzemClass.getA(), pzemClass.status, battery.getV(), groupOut1.getV(), groupOut1.getA(), groupOut1.status, groupOut2.getV(), groupOut2.getA(), groupOut2.status, groupOut3.getV(), groupOut3.getA(), groupOut3.status);
-      Serial.println(AlreadyDataToServer);
-  //       const char* sendDataToServer = "{\"type\": 3, \"data\": {\"solar\": [%4.2f, %4.2f, %d], \"wind\": [%4.2f, %4.2f, %d], \"gen\": [%4.2f, %4.2f, %d], \"bat\": [%4.2f], \"1\": [%4.2f, %4.2f, %d], \"2\": [%4.2f, %4.2f, %d], \"3\": [%4.2f, %4.2f, %d]}}\n", 
-  //  &groupInputSolar.getV(), &groupInputSolar.getA(), groupInputSolar.status, groupInputWind.getV(), groupInputWind.getA(), groupInputWind.status, pzemClass.getV(), pzemClass.getA(), pzemClass.status, battery.getV(), groupOut1.getV(), groupOut1.getA(), groupOut1.status, groupOut2.getV(), groupOut2.getA(), groupOut2.status, groupOut3.getV(), groupOut3.getA(), groupOut3.status 
-  //  ;
-      client.print(AlreadyDataToServer);
-      //break;
-    } else if ((countForward == 8) && (c == '4')) {
-      //{"type": 4,"data": {"rn": 1,"status": 1}}
-      //25 - 1 .  37 - status
-      //Serial.println("kek");
-      //break;
+      char input = client.read();
+
+      while (input != '{' && size--)  // read and skip all shit from socket
+      input = client.read();
+
+      if (size) {
+        ++openings;
+        buffer[0] = input;
+      }
+      else {
+        // fuck
+      }
+
+      uint i = 1;
+
+      for (; openings != closures && size && i < MSG_BUFF_SIZE - 1; ++i, --size) {
+        input = client.read();
+        buffer[i] = input;
+
+        openings += (input == '{');
+        closures += (input == '}');
+      }
+
+      if (openings != closures && !size) {
+        Serial.println("message read partly");
+      }
+
+      else if (openings != closures && i >= MSG_BUFF_SIZE - 1) {
+        Serial.println("buffer size overflow");
+      }
+
+      else {  // correct message
+        buffer[i] = '\0';
+        Serial.println(buffer);
+      }
     }
-    countForward++;
+  
+    if (buffer[2] == 'd' && isRelaySwitch == false) {
+//      Serial.println(shuntvoltageA1);
+//    Serial.println(shuntvoltageA2);
+//    Serial.println(shuntvoltageA2);
+      int relayNum = buffer[18] - '0';
+      int relayPosition = buffer[31] - '0';
+      if (relayPosition == 1) {
+        relay.turnON(relayNum + 1);
+      } else if (relayPosition == 0) {
+        relay.turnOFF(relayNum + 1);
+      }
+      isRelaySwitch = true;
+    } else if (buffer[2] == 't' && isSendData == false) {
+
+
+
+    float shuntvoltageA1 = ina219_A1.getBusVoltage_V();
+    float shuntvoltageA2 = ina219_A2.getBusVoltage_V();
+    float shuntvoltageA3 = ina219_A3.getBusVoltage_V();
+
+    groupOut1.setV(shuntvoltageA1);
+    groupOut2.setV(shuntvoltageA2);
+    groupOut3.setV(shuntvoltageA3);
+
+    Serial.println(shuntvoltageA1);
+    Serial.println(shuntvoltageA2);
+    Serial.println(shuntvoltageA3);
+
+
+      
+        const char* sendDataToServer = "{\"type\": 3, \"data\": {\"solar\": [%4.2f, %4.2f, %d], \"wind\": [%4.2f, %4.2f, %d], \"gen\": [%4.2f, %4.2f, %d], \"bat\": [%4.2f], \"1\": [%4.2f, %4.2f, %d], \"2\": [%4.2f, %4.2f, %d], \"3\": [%4.2f, %4.2f, %d]}}\n";
+        char AlreadyDataToServer[1000];
+        sprintf(AlreadyDataToServer, sendDataToServer, groupInputSolar.getV(), groupInputSolar.getA(), groupInputSolar.status, groupInputWind.getV(), groupInputWind.getA(), groupInputWind.status, pzemClass.getV(), pzemClass.getA(), pzemClass.status, battery.getV(), groupOut1.getV(), groupOut1.getA(), groupOut1.status, groupOut2.getV(), groupOut2.getA(), groupOut2.status, groupOut3.getV(), groupOut3.getA(), groupOut3.status);
+        client.print(AlreadyDataToServer);
+        isSendData = true;
+    }
+    for(int i = 0; i < MSG_BUFF_SIZE; ++i) {
+      buffer[i] = 0;
+    }
   }
 
-    delay (1000);
+
+
+
+
+  Serial.println("");
+
+    delay (200);
     
 }
