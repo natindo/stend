@@ -7,6 +7,10 @@
 #define SDA_2 19
 #define SCL_2 21
 
+<<<<<<< HEAD
+=======
+//инициализация объекта измерилки
+>>>>>>> 860479c (check 1)
 Ina::Ina () {
     this->currentA1 = 0;
     this->currentA2 = 0;
