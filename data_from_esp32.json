@@ -1,0 +1,1 @@
+{"type": 3, "data": {"solar": ["V", "A", "Status"], "wind": ["V", "A", "Status"], "gen": ["V", "A", "Status"], "bat": ["V"], "1": ["V", "A", "Status"], "2": ["V", "A", "Status"], "3": ["V", "A", "Status"]}}
