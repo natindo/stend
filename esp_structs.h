@@ -10,9 +10,9 @@ enum DatagramType {
     SUCCESS = 0,
     ERROR,
     AUTH,
-    MODE,
-    SWITCH_RELAY,
-    SENSORS_DATA
+    SENSORS_DATA,
+    SWITCH_RELAY = 5,
+    MODE
 };
 
 enum ModeType {
