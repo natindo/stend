@@ -7,6 +7,7 @@
 #include <memory>
 #include <string.h>
 #include <utility>
+#include "lib.h"
 
 // функция принимает аргументами структуры RelayData, которые заполняются просто установкой полей структуры
 // возвращает char* выделенной памяти !НЕ ЗАБЫТЬ ПОЧИСТИТЬ!
@@ -16,6 +17,9 @@ std::pair<char*, int> encodeSensorsData(RelayData solar, RelayData wind, RelayDa
 
     Datagram d;
     d.type = SENSORS_DATA;
+    //d.size = sizeof(payload);
+
+    // Serial.println("checkencode1");
 
     dataSize += sizeof(Datagram);
 
@@ -25,17 +29,27 @@ std::pair<char*, int> encodeSensorsData(RelayData solar, RelayData wind, RelayDa
     payload.generator = generator;
     payload.battery_voltage = batteryVoltage;
 
+    // Serial.println("checkencode2");
+
     for (int i = 0; i < RELAYS_NUMBER; ++i) {
         payload.consumer[i] = consumers[i];
     }
 
-    dataSize += sizeof(SensorsData);
-    d.size = dataSize;
+    // Serial.println("checkencode3");
 
-    char* buff = new char[dataSize];
+    dataSize += sizeof(SensorsData);
+    d.size = sizeof(SensorsData);
+
+    // Serial.println("checkencode4");
+
+    char* buff = new char[sizeof(Datagram) + sizeof(SensorsData)];
+
+    // Serial.println("checkencode5");
 
     memcpy(buff, &d, sizeof(Datagram));
     memcpy(buff + sizeof(Datagram), &payload, sizeof(SensorsData));
+
+    // Serial.println("checkencode6");
 
     return {buff, dataSize};
 }
