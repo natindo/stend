@@ -14,10 +14,10 @@
 // #define _GLIBCXX_USE_CXX11_ABI 0
 >>>>>>> 2f7f745 (add work with server and complite reley switch)
 
-#define RELAY_1 26
-#define RELAY_2 25
-#define RELAY_3 33
-#define RELAY_4 32
+#define RELAY_1 32
+#define RELAY_2 33
+#define RELAY_3 26
+#define RELAY_4 25
 
 #define SDA_1 5
 #define SCL_1 18
@@ -191,7 +191,7 @@ void volk() {
     }
 }
 
-void ecoWork () {
+void ecoWork () { // экологичный ждёт проноза
 
     relay.turnON(1);
     int prog = 1;/*Прогноз генерации больше прогноза потребления? ----  1*//*Прогноз генерации больше прогноза потребления на 1/2? ------ 2*/
@@ -346,20 +346,6 @@ void economicalWork () {
     }
 }
 
-// void xvataetLiKZadannomuChasy (float raznicaToka, int tekuchayZarydkaAKB) {
-//     bool groupOut1Status = (digitalRead(RELAY_1) == LOW) ? 1 : 0;
-//     bool groupOut2Status = (digitalRead(RELAY_2) == LOW) ? 1 : 0;
-//     bool groupOut3Status = (digitalRead(RELAY_3) == LOW) ? 1 : 0;
-
-//     relay.turnOFF(1);
-//     relay.turnOFF(2);
-//     relay.turnOFF(3);
-
-//     int batteryVoltage = analogRead(35)*3.3/4096*5;
-
-    
-// }
-
 int powerConsumer3 = 0;
 int powerConsumer2 = 0;
 
@@ -412,9 +398,9 @@ double timeUntilBatteryIsCharged (Group groupOut1, Group groupOut2, Group groupO
                                                    groupInputWind.getA()))*0.7;
 }
 
-void MaximumPowerWork (RelayData* consumers, double timeToChargeFromServer) {
+void MaximumPowerWork (RelayData* consumers, double timeToChargeFromServer) { //принимает сколько времени нужно для зарядки
     //приходит сколько может быть 
-    int time = millis();
+    // int time = millis();
     if (timeToChargeFromServer > timeUntilBatteryIsCharged(groupOut1, groupOut2, groupOut3, groupInputSolar, groupInputWind, pzemClass)) {
         if (digitalRead(RELAY_2) == HIGH) {
             if (timeToChargeFromServer > timeUntilBatteryIsCharged(groupOut1, powerConsumer2, groupOut3, groupInputSolar, groupInputWind, pzemClass)/*акб зарядится с учётом потребления*/) {
@@ -465,7 +451,7 @@ void setup() {
 }
 
 bool loginSuc = false;
-uint16_t ms = 0;
+long ms = 0;
 
 void loop() {
     //попытка законнектиться к серверу
@@ -690,15 +676,9 @@ void loop() {
     static char buffer[MSG_BUFF_SIZE];
     int workMode = 0; //режим работы (ручной или любой другой)
 
-    //Serial.println("ASDFGFSDG");
     if (loginSuc) {
     //пока сервер подключен
         while (client.connected()) {
-
-            //Serial.println("check1");
-
-            // Serial.println(millis());
-            // Serial.println(ms);
 
             if (millis() - ms >= 10000) {
 
@@ -714,17 +694,17 @@ void loop() {
                     input.setAc_a(pzemClass.getA() / 1000);
                 }
 
-                // Serial.println("checksend1");
-
                 solar.current = ina219_B1.getCurrent_mA();
                 solar.voltage = ina219_B1.getBusVoltage_V();
+                solar.status = 1;
                 wind.current = ina219_B2.getCurrent_mA();
                 wind.voltage = ina219_B2.getBusVoltage_V();
+                wind.status = 1;
                 generator.current = input.getAc_a();
                 generator.voltage = input.getAc_v();
-                batteryVoltage = floor(analogRead(35)*3.3/4096*5*10+0.5)/105;
-
-                // Serial.println("checksend2");
+                // generator.status = (digitalRead(RELAY_4) == LOW) ? 1 : 0;
+                
+                batteryVoltage = floor(analogRead(4)*3.3/4096*5*10+0.5)/105;
 
                 consumers[0].voltage = ina219_A1.getBusVoltage_V();
                 consumers[1].voltage = ina219_A2.getBusVoltage_V();
@@ -732,16 +712,9 @@ void loop() {
                 consumers[0].current = ina219_A1.getCurrent_mA();
                 consumers[1].current = ina219_A2.getCurrent_mA();
                 consumers[2].current = ina219_A3.getCurrent_mA();
-
-                // Serial.println("checksend3");
-
-                //решить с Эдиком
-                //char AlreadyDataToServer[200];
-                // auto [AlreadyDataToServer, counter_data] = 
-                // char* AlreadyDataToServer = encodeSensorsData(solar, wind, generator, batteryVoltage, consumers).first;
-                // int counterData = encodeSensorsData(solar, wind, generator, batteryVoltage, consumers).second;
-
-                // Serial.println("checksend2");
+                // consumers[0].status = (digitalRead(RELAY_1) == LOW) ? 1 : 0;
+                // consumers[1].status = (digitalRead(RELAY_2) == LOW) ? 1 : 0;
+                // consumers[2].status = (digitalRead(RELAY_3) == LOW) ? 1 : 0;
 
                 Serial.println(analogRead(35));
 
@@ -749,27 +722,17 @@ void loop() {
                 char* AlreadyDataToServer = result.first;
                 int counterData = result.second;
 
-                // char* AlreadyDataToServer;
-                // int counterData;
-
-                //encodeSensorsData(solar, wind, generator, batteryVoltage, consumers, AlreadyDataToServer, counterData);
-
-                // Serial.println("checksend4");
                 for (int i = 0; i < counterData; i++) {
                     client.print(*AlreadyDataToServer++);
                 } 
-                // Serial.println("checksend5");
                 ms = millis();
 
             }
 
-            //Serial.println(123);
             int size = 0;
             size = client.available();
-            //Serial.println(size);
             int size_check = size;
             int i = 0;
-            //int workMode = 0; //режим работы (ручной или любой другой)
 
             while (size) {
                 Serial.println("check2");
@@ -781,10 +744,11 @@ void loop() {
 
             Datagram* d = reinterpret_cast<Datagram*>(buffer);
             if (size_check != 0) {
-                //Serial.println(size_check);
                 switch (d->type) {
                 case MODE: {
                     Mode* modeData = reinterpret_cast<Mode*>(d + 1);
+
+                    //double kek = modeData -> factor;
 
                     Serial.println("switchModeCheck");
 
@@ -827,53 +791,64 @@ void loop() {
                     // далее в коде переключить реле
 
                     if (relayData->status == 0) {
-                        relay.turnOFF (relayData->relayNumber);
+                        relay.turnOFF (relayData->relayNumber + 1);
+                        if (relayData->relayNumber < 3) {
+                            consumers[relayData->relayNumber + 1].status = 0;
+                        } else {
+                            generator.status = 0;
+                        }
                     } else if (relayData->status == 1) {
-                        relay.turnON (relayData->relayNumber);
+                        relay.turnON (relayData->relayNumber + 1);
+                        if (relayData->relayNumber < 3) {
+                            consumers[relayData->relayNumber + 1].status = 1;
+                        } else {
+                            generator.status = 1;
+                        }
                     }
                     Serial.println(relayData->status);
                     Serial.println(relayData->relayNumber);
                     break;
                 }
                 case SENSORS_DATA: {
-                    pzemClass.setV(pzem.voltage(pzemIP));
-                    if (pzemClass.getV() >= 0.0) {
-                        input.setAc_v(pzemClass.getV());
-                    }
+                    // pzemClass.setV(pzem.voltage(pzemIP));
+                    // if (pzemClass.getV() >= 0.0) {
+                    //     input.setAc_v(pzemClass.getV());
+                    // }
 
-                    pzemClass.setA(pzem.current(pzemIP));
-                    if(pzemClass.getA() >= 0.0) { 
-                        input.setAc_a(pzemClass.getA() / 1000);
-                    }
+                    // pzemClass.setA(pzem.current(pzemIP));
+                    // if(pzemClass.getA() >= 0.0) { 
+                    //     input.setAc_a(pzemClass.getA() / 1000);
+                    // }
 
-                    solar.current = ina219_B1.getCurrent_mA();
-                    solar.voltage = ina219_B1.getBusVoltage_V();
-                    wind.current = ina219_B2.getCurrent_mA();
-                    wind.voltage = ina219_B2.getBusVoltage_V();
-                    generator.current = input.getAc_a();
-                    generator.voltage = input.getAc_v();
-                    // batteryVoltage = analogRead(35)*3.3/4096*5;
-                    batteryVoltage = (floor(analogRead(35)*3.3/4096*5*10+0.5)/10);
+                    // solar.current = ina219_B1.getCurrent_mA();
+                    // solar.voltage = ina219_B1.getBusVoltage_V();
+                    // solar.status = 1;
+                    // wind.current = ina219_B2.getCurrent_mA();
+                    // wind.voltage = ina219_B2.getBusVoltage_V();
+                    // solar.status = 1;
+                    // generator.current = input.getAc_a();
+                    // generator.voltage = input.getAc_v();
+                    // generator.status = (digitalRead(RELAY_4) == LOW) ? 1 : 0;
+                    // // batteryVoltage = analogRead(35)*3.3/4096*5;
+                    // batteryVoltage = (floor(analogRead(35)*3.3/4096*5*10+0.5)/10);
 
-                    consumers[0].voltage = ina219_A1.getBusVoltage_V();
-                    consumers[1].voltage = ina219_A2.getBusVoltage_V();
-                    consumers[2].voltage = ina219_A3.getBusVoltage_V();
-                    consumers[0].current = ina219_A1.getCurrent_mA();
-                    consumers[1].current = ina219_A2.getCurrent_mA();
-                    consumers[2].current = ina219_A3.getCurrent_mA();
+                    // consumers[0].voltage = ina219_A1.getBusVoltage_V();
+                    // consumers[1].voltage = ina219_A2.getBusVoltage_V();
+                    // consumers[2].voltage = ina219_A3.getBusVoltage_V();
+                    // consumers[0].current = ina219_A1.getCurrent_mA();
+                    // consumers[1].current = ina219_A2.getCurrent_mA();
+                    // consumers[2].current = ina219_A3.getCurrent_mA();
+                    // consumers[0].status = (digitalRead(RELAY_1) == LOW) ? 1 : 0;
+                    // consumers[1].status = (digitalRead(RELAY_2) == LOW) ? 1 : 0;
+                    // consumers[2].status = (digitalRead(RELAY_3) == LOW) ? 1 : 0;
 
-                    //решить с Эдиком
-                    // char* AlreadyDataToServer;
-                    // auto [AlreadyDataToServer, counterData] = encodeSensorsData(solar, wind, generator, batteryVoltage, consumers);
-                    char* AlreadyDataToServer = encodeSensorsData(solar, wind, generator, batteryVoltage, consumers).first;
-                    int counterData = encodeSensorsData(solar, wind, generator, batteryVoltage, consumers).second;
-                    for (int i = 0; i < counterData; i++) {
-                        client.print(AlreadyDataToServer++);
-                    }   
+                    // char* AlreadyDataToServer = encodeSensorsData(solar, wind, generator, batteryVoltage, consumers).first;
+                    // int counterData = encodeSensorsData(solar, wind, generator, batteryVoltage, consumers).second;
+                    // for (int i = 0; i < counterData; i++) {
+                    //     client.print(AlreadyDataToServer++);
+                    // }   
 
                     break;
-                    // client.print(AlreadyDataToServer);
-                    // Serial.println(AlreadyDataToServer);
                 }
                 case SUCCESS: {
                     Serial.println ("Авторизация успешна ");
@@ -913,7 +888,7 @@ void loop() {
             case 4: {
                 //MaximumEconomy
                 Serial.println("check15");
-                //economicalWork();
+                economicalWork();
                 break;
             }
             }
