@@ -56,26 +56,30 @@ std::string Relay::getStatus(int relayNum) {
   return tmp;
 }
 
-void Relay::turnON(int relayNum) {
+void Relay::turnON(int relayNum, RelayData consumers[RELAYS_NUMBER]) {
   //std::string tmp;
   switch (relayNum) {
     case 1:
       digitalWrite(_relay1, LOW);
+      consumers[0].status = 1;
       //tmp = "RELAY 1 ON";
       // _udp.print("RELAY 1 ON");
       break;
     case 2:
       digitalWrite(_relay2, LOW);
+      consumers[1].status = 1;
       //tmp = "RELAY 2 ON";
       // _udp.print("RELAY 2 ON");
       break;
     case 3:
       digitalWrite(_relay3, LOW);
+      consumers[2].status = 1;
       //tmp = "RELAY 3 ON";
       // _udp.print("RELAY 3 ON");
       break;
     case 4:
       digitalWrite(_relay4, LOW);
+      consumers[3].status = 1;
       //tmp = "RELAY 4 ON";
       // _udp.print("RELAY 4 ON");
       break;
@@ -84,29 +88,33 @@ void Relay::turnON(int relayNum) {
   //return tmp;
 }
 
-void Relay::turnOFF(int relayNum) {
+void Relay::turnOFF(int relayNum, RelayData consumers[RELAYS_NUMBER]) {
   //std::string tmp;
   switch (relayNum) {
     case 1:
       digitalWrite(_relay1, HIGH);
+      consumers[0].status = 0;
       //tmp = "RELAY 1 OFF";
       // strcpy(tmp, "RELAY 1 OFF");
       // _udp.print("RELAY 1 OFF");
       break;
     case 2:
       digitalWrite(_relay2, HIGH);
+      consumers[1].status = 0;
       //tmp = "RELAY 2 OFF";
       // strcpy(tmp, "RELAY 2 OFF");
       // _udp.print("RELAY 2 OFF");
       break;
     case 3:
       digitalWrite(_relay3, HIGH);
+      consumers[2].status = 0;
       //tmp = "RELAY 3 OFF";
       // strcpy(tmp, "RELAY 3 OFF");
       // _udp.print("RELAY 3 OFF");
       break;
     case 4:
       digitalWrite(_relay4, HIGH);
+      consumers[3].status = 0;
       //tmp = "RELAY 4 OFF";
       // strcpy(tmp, "RELAY 4 OFF");
       // _udp.print("RELAY 4 OFF");

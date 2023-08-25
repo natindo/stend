@@ -64,7 +64,7 @@ RelayData solar;
 RelayData wind;
 RelayData generator;
 RelayData consumers[RELAYS_NUMBER];
-int batteryVoltage;
+double batteryVoltage;
 
 
 >>>>>>> 860479c (check 1)
@@ -170,81 +170,81 @@ int low50(){
 void volk() {
 
     if (needPower()) {
-        relay.turnON(4);
+        relay.turnON(4, consumers);
     }
     else {
-        relay.turnOFF(4);
+        relay.turnOFF(4, consumers);
     }
 
 
     if (ina219_A1.getCurrent_mA() + ina219_A2.getCurrent_mA() + ina219_A3.getCurrent_mA() > 1800) {
-        relay.turnOFF(3);
+        relay.turnOFF(3, consumers);
     } else if (ina219_A1.getCurrent_mA() + ina219_A2.getCurrent_mA() > 1800) {
-        relay.turnOFF(2);
+        relay.turnOFF(2, consumers);
     }
 
 
     if (ina219_A1.getCurrent_mA() + ina219_A2.getCurrent_mA() < 1000) {
-        relay.turnON(3);
+        relay.turnON(3, consumers);
     } else if (ina219_A1.getCurrent_mA() < 1000) {
-        relay.turnON(2);
+        relay.turnON(2, consumers);
     }
 }
 
 void ecoWork () { // экологичный ждёт проноза
 
-    relay.turnON(1);
+    relay.turnON(1, consumers);
     int prog = 1;/*Прогноз генерации больше прогноза потребления? ----  1*//*Прогноз генерации больше прогноза потребления на 1/2? ------ 2*/
     if (prog == 1) {
         if (prog == 2) {
             if (needPower()) {
                 if (digitalRead(RELAY_3) == LOW) {
-                    relay.turnOFF(3);
+                    relay.turnOFF(3,consumers);
                 }
                 if (needPower()) {
                     if (digitalRead(RELAY_2) == LOW) {
                         if ((ina219_A2.getCurrent_mA()>800)) {
-                            relay.turnOFF(2);
+                            relay.turnOFF(2, consumers);
                         } else {
                             if (digitalRead(RELAY_4) == LOW) {
-                                relay.turnOFF(4);
+                                relay.turnOFF(4, consumers);
                             }
                         }
                         if (needPower()) {
                             if (digitalRead(RELAY_4) == HIGH) {
-                                relay.turnON(4);
+                                relay.turnON(4, consumers);
                             }
                         } else { // не требуется доп мощность
                             if (digitalRead(RELAY_4) == LOW) {
-                                relay.turnOFF(4);
+                                relay.turnOFF(4, consumers);
                             }
                         }
                     } else {
                         if (digitalRead(RELAY_4) == LOW) {
-                            relay.turnOFF(4);
+                            relay.turnOFF(4, consumers);
                         }
                     }
                 } else {
                     if (digitalRead(RELAY_4) == LOW) {
-                        relay.turnOFF(4);
+                        relay.turnOFF(4, consumers);
                     }
                 }
             } else {
                 if (digitalRead(RELAY_4) == LOW) {
-                    relay.turnOFF(4);
+                    relay.turnOFF(4, consumers);
                 } else {
                     if (digitalRead(RELAY_2) == LOW) {
                         if (digitalRead(RELAY_3) == LOW) {
                         } else {
-                            relay.turnON(3);
+                            relay.turnON(3, consumers);
                             if (needPower()) {
-                                relay.turnOFF(2);
+                                relay.turnOFF(2, consumers);
                             }
                         }
                     } else {
-                        relay.turnON(2);
+                        relay.turnON(2, consumers);
                         if (needPower()) {
-                            relay.turnOFF(2);
+                            relay.turnOFF(2, consumers);
                         }
                     }
                 }
@@ -252,95 +252,95 @@ void ecoWork () { // экологичный ждёт проноза
         } else {
             if (low50()) {
                 if (digitalRead(RELAY_3) == LOW) {
-                    relay.turnOFF(3);
+                    relay.turnOFF(3, consumers);
                 }
                 if (needPower()) {
                     if (digitalRead(RELAY_2) == LOW) {
-                        relay.turnOFF(2);
+                        relay.turnOFF(2, consumers);
                     }
                     if (needPower()) {
-                        relay.turnON(4);
+                        relay.turnON(4, consumers);
                     }
                 }
             } else {
                 if (digitalRead(RELAY_2) == HIGH && !needPower()) {
-                    relay.turnON(2);
+                    relay.turnON(2, consumers);
                 }
                 if (needPower()) {
-                    relay.turnON(4);
-                    relay.turnOFF(2);
+                    relay.turnON(4, consumers);
+                    relay.turnOFF(2, consumers);
                 }
             }
         }
     } else {
         if (digitalRead(RELAY_3) == LOW) {
-            relay.turnOFF(3);
+            relay.turnOFF(3, consumers);
         }
         if (digitalRead(RELAY_2) == LOW) {
-            relay.turnOFF(2);
+            relay.turnOFF(2, consumers);
         }
         if (needPower() && digitalRead(RELAY_4) == HIGH) {
-            relay.turnON(4);
+            relay.turnON(4, consumers);
         }
     }
 }
 
 
 void economicalWork () {
-    relay.turnON(1);
+    relay.turnON(1, consumers);
     if (!low50()) {
         if (needPower()) {
             if (digitalRead(RELAY_3) == LOW) {
-                relay.turnOFF(3);
+                relay.turnOFF(3, consumers);
                 if (!needPower()) {
-                    relay.turnOFF(4);
+                    relay.turnOFF(4, consumers);
                 }
             }
             if ((digitalRead(RELAY_2) == LOW) && (ina219_A2.getCurrent_mA() > 800)) {/*включена ли вторая группа и ее мощность больше 50%*/
-                relay.turnOFF(2);
+                relay.turnOFF(2, consumers);
                 if (!needPower()) {
-                    relay.turnOFF(4);
+                    relay.turnOFF(4, consumers);
                 } else if (needPower()){
-                    relay.turnON(4);
+                    relay.turnON(4, consumers);
                 }
             }
 
         } else if (!needPower()) {
             if ((digitalRead(RELAY_4) == LOW)) {
-                relay.turnOFF(4);
+                relay.turnOFF(4, consumers);
             } else { //генератор не влючён
                 if (digitalRead(RELAY_2) == LOW) {
                     if (digitalRead(RELAY_3) == LOW) {
                         //заряжать акб --- значит нечего не делать
                     } else { //3 группа выключена
-                        relay.turnON(3);
+                        relay.turnON(3, consumers);
                         if (needPower()) {
-                            relay.turnOFF(2);
+                            relay.turnOFF(2, consumers);
                         }
                     }
                 } else {
-                    relay.turnON(2);
+                    relay.turnON(2, consumers);
                     if (needPower()) {
-                    relay.turnOFF(2);
+                    relay.turnOFF(2, consumers);
                     }
                 }
             }
         }
     } else if (low50()) {
         if ((digitalRead(RELAY_3) == LOW)) {
-            relay.turnOFF(3);
+            relay.turnOFF(3, consumers);
         }
         if ((digitalRead(RELAY_2) == LOW)) {
-            relay.turnOFF(2);
+            relay.turnOFF(2, consumers);
         }
         if (needPower()) {
         //
             if ((digitalRead(RELAY_4) == HIGH)) {
-                relay.turnON(4);
+                relay.turnON(4, consumers);
             }
         } else {
             if ((digitalRead(RELAY_4) == LOW)) {
-                relay.turnON(4);
+                relay.turnON(4, consumers);
             }
         }
     }
@@ -404,33 +404,33 @@ void MaximumPowerWork (RelayData* consumers, double timeToChargeFromServer) { //
     if (timeToChargeFromServer > timeUntilBatteryIsCharged(groupOut1, groupOut2, groupOut3, groupInputSolar, groupInputWind, pzemClass)) {
         if (digitalRead(RELAY_2) == HIGH) {
             if (timeToChargeFromServer > timeUntilBatteryIsCharged(groupOut1, powerConsumer2, groupOut3, groupInputSolar, groupInputWind, pzemClass)/*акб зарядится с учётом потребления*/) {
-                relay.turnON(2);
+                relay.turnON(2, consumers);
             }
         }
         if (digitalRead(RELAY_3) == HIGH) {
             if (timeToChargeFromServer > timeUntilBatteryIsCharged(groupOut1, groupOut2, powerConsumer3, groupInputSolar, groupInputWind, pzemClass)/*акб зарядится с учётом потребления*/) {
-                relay.turnON(3);
+                relay.turnON(3, consumers);
             }
         }
         if (digitalRead(RELAY_4) == LOW) {
             if (timeToChargeFromServer > timeUntilBatteryIsCharged(groupOut1, groupOut2, groupOut3, groupInputSolar, groupInputWind)/*акб зарядиться к нужному часу без дизеля*/) {
-                relay.turnOFF(4);
+                relay.turnOFF(4, consumers);
             }
         }   
     } else {
         if (digitalRead(RELAY_4) == HIGH) {
-            relay.turnON(4);
+            relay.turnON(4, consumers);
         }
         if (timeToChargeFromServer < timeUntilBatteryIsCharged (groupOut1, groupOut2, groupOut3, groupInputSolar, groupInputWind, pzemClass)) {
             if (digitalRead(RELAY_3) == LOW) {
                 powerConsumer3 = consumers[2].voltage * consumers[2].current;
-                relay.turnOFF(3);
+                relay.turnOFF(3, consumers);
             }
         }
         if (timeToChargeFromServer < timeUntilBatteryIsCharged (groupOut1, groupOut2, groupOut3, groupInputSolar, groupInputWind, pzemClass)) {
             if (digitalRead(RELAY_2) == LOW) {
                 powerConsumer2 = consumers[1].voltage * consumers[1].current;
-                relay.turnOFF(2);
+                relay.turnOFF(2, consumers);
             }
         } else {
             //вывод о невозможности
@@ -680,7 +680,7 @@ void loop() {
     //пока сервер подключен
         while (client.connected()) {
 
-            if (millis() - ms >= 10000) {
+            if (millis() - ms >= 3000) {
 
                 Serial.println("CheckSensorsDataSent");
 
@@ -704,7 +704,7 @@ void loop() {
                 generator.voltage = input.getAc_v();
                 // generator.status = (digitalRead(RELAY_4) == LOW) ? 1 : 0;
                 
-                batteryVoltage = floor(analogRead(4)*3.3/4096*5*10+0.5)/105;
+                batteryVoltage = floor(analogRead(35)*3.3/4096*5*10+0.5)/105;
 
                 consumers[0].voltage = ina219_A1.getBusVoltage_V();
                 consumers[1].voltage = ina219_A2.getBusVoltage_V();
@@ -791,19 +791,19 @@ void loop() {
                     // далее в коде переключить реле
 
                     if (relayData->status == 0) {
-                        relay.turnOFF (relayData->relayNumber + 1);
-                        if (relayData->relayNumber < 3) {
-                            consumers[relayData->relayNumber + 1].status = 0;
-                        } else {
-                            generator.status = 0;
-                        }
+                        relay.turnOFF (relayData->relayNumber, consumers);
+                        // if (relayData->relayNumber <= 3) {
+                        //     consumers[relayData->relayNumber - 1].status = 0;
+                        // } else {
+                        //     generator.status = 0;
+                        // }
                     } else if (relayData->status == 1) {
-                        relay.turnON (relayData->relayNumber + 1);
-                        if (relayData->relayNumber < 3) {
-                            consumers[relayData->relayNumber + 1].status = 1;
-                        } else {
-                            generator.status = 1;
-                        }
+                        relay.turnON (relayData->relayNumber, consumers);
+                        // if (relayData->relayNumber <= 3) {
+                        //     consumers[relayData->relayNumber - 1].status = 1;
+                        // } else {
+                        //     generator.status = 1;
+                        // }
                     }
                     Serial.println(relayData->status);
                     Serial.println(relayData->relayNumber);
