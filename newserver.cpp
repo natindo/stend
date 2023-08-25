@@ -35,6 +35,10 @@ std::pair<char*, int> encodeSensorsData(RelayData solar, RelayData wind, RelayDa
         payload.consumer[i] = consumers[i];
     }
 
+    Serial.println(consumers[0].status);
+    Serial.println(consumers[1].status);
+    Serial.println(consumers[2].status);
+
     // Serial.println("checkencode3");
 
     dataSize += sizeof(SensorsData);
