@@ -37,32 +37,4 @@ public:
     float getAc_a ();
 };
 
-//battery var
-class Battery : public InputAndOutput {
-public:
-    Battery();
-};
-
-//measure var
-class Group : public InputAndOutput {
-public:
-    Group();
-};
-
-//servers var
-class WorkWithServer {
-public:
-    bool authFlag;
-    unsigned long authTimer;
-    unsigned long requestTimer;
-    unsigned long wlConnectTimer;
-    unsigned long pzemTimer;
-    unsigned long adcTimer;
-    char incomingPacket[1440];
-    char outgoingPacket[1440];
-    std::string outgoingPacketString;
-
-    WorkWithServer();
-};
-
 #endif // INPUTANDOUOTPUT_H

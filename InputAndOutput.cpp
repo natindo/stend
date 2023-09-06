@@ -56,28 +56,3 @@ void Input::setAc_a (float a) {
 float Input::getAc_a () {
     return this->ac_a;
 }
-
-//--SERVER--
-WorkWithServer::WorkWithServer () {
-    authFlag = false;
-    authTimer = 0;
-    requestTimer = 0;
-    wlConnectTimer = 0;
-    pzemTimer = 0;
-    adcTimer = 0;
-    incomingPacket[1440] = {0};
-    outgoingPacket[1440] = {0};
-    std::string outgoingPacketString;
-}
-
-//--BATTERY--
-Battery::Battery () {
-    this->v = 0;
-}
-
-//--GROUP--
-Group::Group () {
-    this->a = 0;
-    this->v = 0;
-    this->status = 0;
-}
