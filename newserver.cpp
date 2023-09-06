@@ -29,31 +29,17 @@ std::pair<char*, int> encodeSensorsData(RelayData solar, RelayData wind, RelayDa
     payload.generator = generator;
     payload.battery_voltage = batteryVoltage;
 
-    // Serial.println("checkencode2");
-
     for (int i = 0; i < RELAYS_NUMBER; ++i) {
         payload.consumer[i] = consumers[i];
     }
 
-    Serial.println(consumers[0].status);
-    Serial.println(consumers[1].status);
-    Serial.println(consumers[2].status);
-
-    // Serial.println("checkencode3");
-
     dataSize += sizeof(SensorsData);
     d.size = sizeof(SensorsData);
 
-    // Serial.println("checkencode4");
-
     char* buff = new char[sizeof(Datagram) + sizeof(SensorsData)];
-
-    // Serial.println("checkencode5");
 
     memcpy(buff, &d, sizeof(Datagram));
     memcpy(buff + sizeof(Datagram), &payload, sizeof(SensorsData));
-
-    // Serial.println("checkencode6");
 
     return {buff, dataSize};
 }
