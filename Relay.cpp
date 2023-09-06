@@ -3,6 +3,15 @@
 #include <string>
 #define _GLIBCXX_USE_CXX11_ABI 0
 
+extern int relaySwitchCounter;
+
+void stopRelaySwitching () {
+    if (++relaySwitchCounter > 5) {
+        relaySwitchCounter = 0;
+        delay(200);
+    }
+}
+
 Relay::Relay(uint8_t r1, uint8_t r2, uint8_t r3, uint8_t r4) : _relay1(r1), _relay2(r2), _relay3(r3), _relay4(r4) {
   pinMode(_relay1, OUTPUT);
   pinMode(_relay2, OUTPUT);
@@ -15,6 +24,7 @@ Relay::Relay(uint8_t r1, uint8_t r2, uint8_t r3, uint8_t r4) : _relay1(r1), _rel
 }
 
 void Relay::turnON(int relayNum, RelayData consumers[RELAYS_NUMBER]) {
+    stopRelaySwitching ();
   switch (relayNum) {
     case 1:
       digitalWrite(_relay1, LOW);
@@ -36,6 +46,7 @@ void Relay::turnON(int relayNum, RelayData consumers[RELAYS_NUMBER]) {
 }
 
 void Relay::turnOFF(int relayNum, RelayData consumers[RELAYS_NUMBER]) {
+    stopRelaySwitching ();
   switch (relayNum) {
     case 1:
       digitalWrite(_relay1, HIGH);
