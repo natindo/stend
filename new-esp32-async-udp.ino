@@ -20,9 +20,6 @@
 
 #define MSG_BUFF_SIZE 150
 
-//счётчик изменений статуса реле
-int relaySwitchCounter = 0;
-
 //выслать данные батарейки
 bool isSendBattaryVoltage = false;
 
@@ -32,6 +29,7 @@ int relaySwitchCounter = 0;
 //таймер для считывания батарейки
 uint32_t timerBattery = 0;
 
+//объекты измерителей тока и напряжения
 Adafruit_INA219 ina219_A1;
 Adafruit_INA219 ina219_A2(0x41);
 Adafruit_INA219 ina219_A3(0x44);
@@ -46,14 +44,6 @@ bool isAuthFromServer = false;
 
 // Структуры данных для подключенных источников и потребилетелей
 InputAndOutput pzemClass;
-InputAndOutput groupInputSolar;
-InputAndOutput groupInputWind;
-Input input;
-Battery battery;
-Group groupOut1;
-Group groupOut2;
-Group groupOut3;
-WorkWithServer infoToServer;
 
 RelayData solar;
 RelayData wind;
@@ -62,6 +52,7 @@ RelayData consumers[RELAYS_NUMBER];
 uint16_t batteryVoltageToServer;
 double batteryVoltage;
 
+
 // Объект модуля с четырьмя реле
 Relay relay(RELAY_1, RELAY_2, RELAY_3, RELAY_4);
 
@@ -69,60 +60,6 @@ Relay relay(RELAY_1, RELAY_2, RELAY_3, RELAY_4);
 HardwareSerial PzemSerial2(2);     // Use hwserial UART2 at pins IO-16 (RX2) and IO-17 (TX2)
 PZEM004T pzem(&PzemSerial2);
 IPAddress pzemIP(192, 168, 1, 1);
-
-void setup() {
-  Serial.begin(115200);
-  pinMode(LED_BUILTIN, OUTPUT); // настройства светодиода для индикации наличия авторизации с сервером
-  delay(100);
-
-  //Настроим внутренее АЦП на 12bit
-  //analogReadResolutoin (12);
-
-  // Установка адреса модуля PZEM004T
-  pzem.setAddress(pzemIP);
-
-  //Инициализация wifi
-  WifiInit();
-}
-
-void loop() {
-  
-  while (!isConnectToServer) {
-    //connect to server
-    const uint16_t port = 2001; // port TCP server
-    const char * host = "192.168.88.212"; // ip or dns
-    Serial.print("Connecting to ");
-    Serial.println(host);
-      // Use WiFiClient class to create TCP connections
-    if (!client.connect(host, port)) {
-        Serial.println("Connection failed.");
-        Serial.println("Waiting 5 seconds before retrying...");
-        delay(1000);
-    } else {
-      isConnectToServer = true;
-    }
-    //client.print("hello server im from esp");
-  }
-
-  if (!isAuthToServer) {
-    serv.authToServer(client);
-    Serial.println("authToServer");
-    isAuthToServer = true;
-    delay (500);
-  }
-
-  if (!isAuthFromServer) {
-    serv.authFromServer(client);
-    Serial.println("authFromServer");
-    isAuthFromServer = true;
-  }
-
-  // Получение статусов модуля реле
-  groupOut1.status = (digitalRead(RELAY_1) == LOW) ? 1 : 0;
-  groupOut2.status = (digitalRead(RELAY_2) == LOW) ? 1 : 0;
-  groupOut3.status = (digitalRead(RELAY_3) == LOW) ? 1 : 0;
-
-  //battery.setV(analogRead(14)/4096*3.3/5);
 
 int needPower(){
 
@@ -150,32 +87,6 @@ int low50 () {
     // Serial.println(batteryVoltage);
 
     return (((batteryVoltage-7.2) / (14 - 7.2)) < 0.5) ? 1 : 0;
-}
-
-
-
-void volk() {
-
-    if (needPower()) {
-        relay.turnON(4, consumers);
-    }
-    else {
-        relay.turnOFF(4, consumers);
-    }
-
-
-    if (consumers[0].current + consumers[1].current + consumers[2].current > 1800) {
-        relay.turnOFF(3, consumers);
-    } else if (consumers[0].current + consumers[1].current > 1800) {
-        relay.turnOFF(2, consumers);
-    }
-
-
-    if (consumers[0].current + consumers[1].current < 1000) {
-        relay.turnON(3, consumers);
-    } else if (consumers[0].current < 1000) {
-        relay.turnON(2, consumers);
-    }
 }
 
 void ecoWork () { // экологичный ждёт проноза
@@ -271,67 +182,6 @@ void ecoWork () { // экологичный ждёт проноза
         }
     }
 }
-
-
-// void economicalWork () {
-//     // relay.turnON(1, consumers);
-//     if (!low50()) {
-//         if (needPower()) {
-//             if (digitalRead(RELAY_3) == LOW) {
-//                 relay.turnOFF(3, consumers);
-//                 if (!needPower()) {
-//                     relay.turnOFF(4, consumers);
-//                 }
-//             }
-//             if ((digitalRead(RELAY_2) == LOW) && (ina219_A2.getCurrent_mA() > 800)) {/*включена ли вторая группа и ее мощность больше 50%*/
-//                 relay.turnOFF(2, consumers);
-//                 if (!needPower()) {
-//                     relay.turnOFF(4, consumers);
-//                 } else if (needPower()){
-//                     relay.turnON(4, consumers);
-//                 }
-//             }
-
-//         } else if (!needPower()) {
-//             if ((digitalRead(RELAY_4) == LOW)) {
-//                 relay.turnOFF(4, consumers);
-//             } else { //генератор не влючён
-//                 if (digitalRead(RELAY_2) == LOW) {
-//                     if (digitalRead(RELAY_3) == LOW) {
-//                         //заряжать акб --- значит нечего не делать
-//                     } else { //3 группа выключена
-//                         relay.turnON(3, consumers);
-//                         if (needPower()) {
-//                             relay.turnOFF(2, consumers);
-//                         }
-//                     }
-//                 } else {
-//                     relay.turnON(2, consumers);
-//                     if (needPower()) {
-//                     relay.turnOFF(2, consumers);
-//                     }
-//                 }
-//             }
-//         }
-//     } else if (low50()) {
-//         if ((digitalRead(RELAY_3) == LOW)) {
-//             relay.turnOFF(3, consumers);
-//         }
-//         if ((digitalRead(RELAY_2) == LOW)) {
-//             relay.turnOFF(2, consumers);
-//         }
-//         if (needPower()) {
-//         //
-//             if ((digitalRead(RELAY_4) == HIGH)) {
-//                 relay.turnON(4, consumers);
-//             }
-//         } else {
-//             if ((digitalRead(RELAY_4) == LOW)) {
-//                 relay.turnOFF(4, consumers);
-//             }
-//         }
-//     }
-// }
 
 void economicalWork () {
 
@@ -444,48 +294,6 @@ void MaximumPowerWork (RelayData* consumers, double timeToChargeFromServer) { //
     }
 }
 
-// int low75(){ //заряд аккума больше 75%?
-//     return (12.4 - (analogRead(35) * 3.3 / 4096 * 5) / (12.4 - 7.2) < 0.75) ? 1 : 0; //тут надо поправить с учётом падения u от нагрузки
-// }
- 
-// int consumption_forecast (RelayData* consumers, RelayData wind, RelayData solar, InputAndOutput pzemClass) {// выработка больше потребления по рогнозам, я просто беру производство > потребления без прогноза = 1, иначе 0
-//   return ((                                        consumers[0].current +
-//                                                    consumers[1].current +
-//                                                    consumers[2].current -
-//                                                    solar.current -
-//                                                    wind.current -
-//                                                    pzemClass.getA()) < 0) ? 1 : 0;
-// }
-//перед началом работы алгоритма надо включить реле
-// int MaximumReliabilityRelayTurnOn = 0;
-
-// void MaximumReliabilityWork(RelayData* consumers, RelayData wind, RelayData solar, InputAndOutput pzemClass) {
-//     if (!consumption_forecast(consumers, wind, solar, pzemClass)) {
-//         relay.turnOFF(3, consumers);
-//         relay.turnON(4, consumers);
-//     } else if (!low75()) {
-//         relay.turnON(3, consumers);
-//         relay.turnOFF(4, consumers);
-//     } else {
-//         if (!consumption_forecast(consumers, wind, solar, pzemClass)) {
-//             relay.turnOFF(2, consumers);
-//             relay.turnON(4, consumers);
-//         } else if (!low75()) {
-//             relay.turnON(2, consumers);
-//             relay.turnOFF(4, consumers);
-//         } else {
-//             if (!consumption_forecast(consumers, wind, solar, pzemClass)) {
-//                 relay.turnOFF(1, consumers);
-//                 relay.turnON(4, consumers);
-//             } else if (!low75()) {
-//                 relay.turnON(1, consumers);
-//                 relay.turnOFF(4, consumers);
-//             } else {
-//             //сообщение о невозможности работы алгоритма
-//             }
-//         }
-//     }
-// }
 
 int low75 () { //заряд аккума больше 75%?
     double batteryVoltageESP = analogRead(35) * 3.3 / 4096 * 5.3; //настоящие вольты //флур мб убрать
@@ -538,9 +346,9 @@ void MaximumReliabilityWork(RelayData* consumers, RelayData wind, RelayData sola
     }
 }
 
-void надёжность () {
+// void надёжность () {
 
-}
+// }
 
 enum unit {
     VOLTAGE = 0,
@@ -622,14 +430,11 @@ void loop() {
         auto [auth, counter] = encodeAuth(login, pass);
         for (int i = 0; i < counter; i++) {
             client.print(*auth);
-            //Serial.println(*auth);
             auth++;
         }
         loginSuc = true;
-        Serial.println("login succsess");
+        // Serial.println("login succsess");
     }
-
-    // loginSuc = true;
 
     // Получение статусов модуля реле
     consumers[0].status = (digitalRead(RELAY_1) == LOW) ? 1 : 0;
@@ -637,7 +442,6 @@ void loop() {
     consumers[2].status = (digitalRead(RELAY_1) == LOW) ? 1 : 0;
 
     //инициализация I2C и INA
->>>>>>> 860479c (check 1)
     TwoWire I2Cone = TwoWire(0);
     TwoWire I2Ctwo = TwoWire(1);
 
@@ -650,154 +454,6 @@ void loop() {
     ina219_B1.begin (&I2Ctwo);
     ina219_B2.begin (&I2Ctwo);
 
-<<<<<<< HEAD
-//    float shuntvoltageA1 = ina219_A1.getShuntVoltage_mV();
-//    float shuntvoltageA2 = ina219_A2.getShuntVoltage_mV();
-//    float shuntvoltageA3 = ina219_A3.getShuntVoltage_mV();
-//    float shuntvoltageB1 = ina219_B1.getBusVoltage_V();
-//    float shuntvoltageB2 = ina219_B2.getBusVoltage_V();
-//
-//    groupOut1.setV(shuntvoltageA1);
-//    groupOut2.setV(shuntvoltageA2);
-//    groupOut3.setV(shuntvoltageA3);
-//
-//  infoToServer.pzemTimer = millis();
-//
-//    pzemClass.setV(pzem.voltage(pzemIP));
-//    if (pzemClass.getV() >= 0.0) {
-//      input.setAc_v(pzemClass.getV());
-//    }
-//
-//    pzemClass.setA(pzem.current(pzemIP));
-//    if(pzemClass.getA() >= 0.0) { 
-//      input.setAc_a(pzemClass.getA());
-//    }
-
-    static char buffer[MSG_BUFF_SIZE] = { 0 };
-    
-    while (client.connected()) { 
-
-
-
-
-//    Serial.println(shuntvoltageA1);
-//    Serial.println(shuntvoltageA2);
-//    Serial.println(shuntvoltageA2);
-    
-//    float shuntvoltageB1 = ina219_B1.getBusVoltage_V();
-//    float shuntvoltageB2 = ina219_B2.getBusVoltage_V();
-//
-//    groupOut1.setV(shuntvoltageA1);
-//    groupOut2.setV(shuntvoltageA2);
-//    groupOut3.setV(shuntvoltageA3);
-
-  infoToServer.pzemTimer = millis();
-
-    pzemClass.setV(pzem.voltage(pzemIP));
-    if (pzemClass.getV() >= 0.0) {
-      input.setAc_v(pzemClass.getV());
-    }
-
-    pzemClass.setA(pzem.current(pzemIP));
-    if(pzemClass.getA() >= 0.0) { 
-      input.setAc_a(pzemClass.getA());
-    }
-
-
-      
-      bool isSendData = false;
-      bool isRelaySwitch = false;
-    uint size = client.available();
-
-    if (size) {
-      uint openings = 0;
-      uint closures = 0;
-
-      char input = client.read();
-
-      while (input != '{' && size--)  // read and skip all shit from socket
-      input = client.read();
-
-      if (size) {
-        ++openings;
-        buffer[0] = input;
-      }
-      else {
-        // fuck
-      }
-
-      uint i = 1;
-
-      for (; openings != closures && size && i < MSG_BUFF_SIZE - 1; ++i, --size) {
-        input = client.read();
-        buffer[i] = input;
-
-        openings += (input == '{');
-        closures += (input == '}');
-      }
-
-      if (openings != closures && !size) {
-        Serial.println("message read partly");
-      }
-
-      else if (openings != closures && i >= MSG_BUFF_SIZE - 1) {
-        Serial.println("buffer size overflow");
-      }
-
-      else {  // correct message
-        buffer[i] = '\0';
-        Serial.println(buffer);
-      }
-    }
-  
-    if (buffer[2] == 'd' && isRelaySwitch == false) {
-//      Serial.println(shuntvoltageA1);
-//    Serial.println(shuntvoltageA2);
-//    Serial.println(shuntvoltageA2);
-      int relayNum = buffer[18] - '0';
-      int relayPosition = buffer[31] - '0';
-      if (relayPosition == 1) {
-        relay.turnON(relayNum + 1);
-      } else if (relayPosition == 0) {
-        relay.turnOFF(relayNum + 1);
-      }
-      isRelaySwitch = true;
-    } else if (buffer[2] == 't' && isSendData == false) {
-
-
-
-    float shuntvoltageA1 = ina219_A1.getBusVoltage_V();
-    float shuntvoltageA2 = ina219_A2.getBusVoltage_V();
-    float shuntvoltageA3 = ina219_A3.getBusVoltage_V();
-
-    groupOut1.setV(shuntvoltageA1);
-    groupOut2.setV(shuntvoltageA2);
-    groupOut3.setV(shuntvoltageA3);
-
-    Serial.println(shuntvoltageA1);
-    Serial.println(shuntvoltageA2);
-    Serial.println(shuntvoltageA3);
-
-
-      
-        const char* sendDataToServer = "{\"type\": 3, \"data\": {\"solar\": [%4.2f, %4.2f, %d], \"wind\": [%4.2f, %4.2f, %d], \"gen\": [%4.2f, %4.2f, %d], \"bat\": [%4.2f], \"1\": [%4.2f, %4.2f, %d], \"2\": [%4.2f, %4.2f, %d], \"3\": [%4.2f, %4.2f, %d]}}\n";
-        char AlreadyDataToServer[1000];
-        sprintf(AlreadyDataToServer, sendDataToServer, groupInputSolar.getV(), groupInputSolar.getA(), groupInputSolar.status, groupInputWind.getV(), groupInputWind.getA(), groupInputWind.status, pzemClass.getV(), pzemClass.getA(), pzemClass.status, battery.getV(), groupOut1.getV(), groupOut1.getA(), groupOut1.status, groupOut2.getV(), groupOut2.getA(), groupOut2.status, groupOut3.getV(), groupOut3.getA(), groupOut3.status);
-        client.print(AlreadyDataToServer);
-        isSendData = true;
-    }
-    for(int i = 0; i < MSG_BUFF_SIZE; ++i) {
-      buffer[i] = 0;
-    }
-  }
-
-
-
-
-
-  Serial.println("");
-
-=======
     ina219_A1.powerSave(0);
     ina219_A2.powerSave(0);
     ina219_A3.powerSave(0);
@@ -815,19 +471,6 @@ void loop() {
             // Serial.println("kek");
 
             if (millis() - ms >= 3000) {
-
-                // prepCurrentSensorsData (ina219_A1.getBusVoltage_V(), consumers, 0);
-
-                // solar.current = ina219_B1.getCurrent_mA();
-                // solar.voltage = ina219_B1.getBusVoltage_V();
-                // solar.status = 1;
-                // wind.current = ina219_B2.getCurrent_mA();
-                // wind.voltage = ina219_B2.getBusVoltage_V();
-                // wind.status = 1;
-                // generator.current = pzem.current(pzemIP);
-                // pzemClass.setA(generator.current);
-                // generator.voltage = pzem.voltage(pzemIP);
-                // pzemClass.setV(generator.voltage);
 
                 #ifdef DEBUG
                 Serial.println(generator.current);
@@ -872,13 +515,6 @@ void loop() {
                 prepManufacturersData(ina219_B2.getCurrent_mA() / 1000, wind, CURRENT);
                 prepManufacturersData(pzem.current(pzemIP), generator, CURRENT);
                 pzemClass.setA(generator.current);
-                
-                // consumers[0].voltage = ina219_A1.getBusVoltage_V();
-                // consumers[1].voltage = ina219_A2.getBusVoltage_V();
-                // consumers[2].voltage = ina219_A3.getBusVoltage_V();
-                // consumers[0].current = ina219_A1.getCurrent_mA();
-                // consumers[1].current = ina219_A2.getCurrent_mA();
-                // consumers[2].current = ina219_A3.getCurrent_mA();
 
                 std::pair<char*, int> result = encodeSensorsData(solar, wind, generator, batteryVoltageToServer, consumers);
                 char* AlreadyDataToServer = result.first;
@@ -1046,7 +682,6 @@ void loop() {
     isAuthFromServer = false;
 
     Serial.println("");
->>>>>>> 860479c (check 1)
     delay (200);
     
 }
