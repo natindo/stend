@@ -1,11 +1,11 @@
 #include "lib.h"
 
 // Название и пароль точки доступа
-const char *ssid = "IU4-net";
-const char *password = "iu4wifivip";
+// const char *ssid = "IU4-net";
+// const char *password = "iu4wifivip";
 
-// const char *ssid = "esp32";
-// const char *password = "qwerty1234";
+const char *ssid = "esp32";
+const char *password = "qwerty1234";
 
 //const char *ssid = "Natindo";
 //const char *password = "jb7niwhyxv66q";

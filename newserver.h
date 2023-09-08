@@ -4,6 +4,11 @@
 #include <string.h>
 #include <utility>
 
+
+// возвращает char* выделенной памяти !НЕ ЗАБЫТЬ ПОЧИСТИТЬ!
+// возвращает сообщение о невозможности выполнить операцию
+std::pair<char*, int> errorMessage ();
+
 // функция принимает аргументами структуры RelayData, которые заполняются просто установкой полей структуры
 // возвращает char* выделенной памяти !НЕ ЗАБЫТЬ ПОЧИСТИТЬ!
 std::pair<char*, int> encodeSensorsData(RelayData solar, RelayData wind, RelayData generator, int batteryVoltage, RelayData consumers[RELAYS_NUMBER]);
