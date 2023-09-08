@@ -9,6 +9,18 @@
 #include <utility>
 #include "lib.h"
 
+std::pair<char*, int> errorMessage () {
+    
+    Datagram d;
+    d.type = ERROR;
+
+    char* buff = new char[sizeof(Datagram)];
+
+    memcpy(buff, &d, sizeof(Datagram));
+
+    return {buff, sizeof(Datagram)};
+}   
+
 // функция принимает аргументами структуры RelayData, которые заполняются просто установкой полей структуры
 // возвращает char* выделенной памяти !НЕ ЗАБЫТЬ ПОЧИСТИТЬ!
 std::pair<char*, int> encodeSensorsData(RelayData solar, RelayData wind, RelayData generator, int batteryVoltage, RelayData consumers[RELAYS_NUMBER]) {
@@ -62,6 +74,9 @@ std::pair <char*, int> encodeAuth(char* login, char* password) {
     dataSize += payload.loginSize;
     dataSize += payload.passwordSize;
     dataSize += sizeof(Auth);
+
+    Serial.println(payload.loginSize);
+    Serial.println(payload.passwordSize);
 
     char* buff = new char[dataSize];
 
