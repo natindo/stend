@@ -7,6 +7,8 @@
 #include <utility>
 // #define DEBAG
 
+//Волк
+
 #define RELAY_1 26
 #define RELAY_2 25
 #define RELAY_3 33
@@ -61,6 +63,17 @@ HardwareSerial PzemSerial2(2);     // Use hwserial UART2 at pins IO-16 (RX2) and
 PZEM004T pzem(&PzemSerial2);
 IPAddress pzemIP(192, 168, 1, 1);
 
+int consumption_forecast (RelayData* consumers, RelayData wind, RelayData solar, InputAndOutput pzemClass) {// выработка больше потребления по рогнозам, я просто беру производство > потребления без прогноза =1, иначе 0
+//   return ((                                        consumers[0].current +
+//                                                    consumers[1].current +
+//                                                    consumers[2].current -
+//                                                    solar.current -
+//                                                    wind.current -
+//                                                    pzemClass.getA() * x ) < 0 ) ? 1 : 0;
+
+    return 1;
+}
+
 int needPower(){
 
     consumers[0].voltage = ina219_A1.getBusVoltage_V();
@@ -90,104 +103,53 @@ int low50 () {
 }
 
 void ecoWork () { // экологичный ждёт проноза
+   relay.turnON(1, consumers);
+    // relay.turnOFF(4, consumers);  СДЕЛАТЬ ВЫКЛЮЧЕНИЕ РЕЛЕ ПРИ ВКЛЮЧЕНИИ!!!!!!!!!!!!!
 
-    relay.turnON(1, consumers);
-    int prog = 1;/*Прогноз генерации больше прогноза потребления? ----  1*//*Прогноз генерации больше прогноза потребления на 1/2? ------ 2*/
-    if (prog == 1) {
-        if (prog == 2) {
-            if (needPower()) {
-                if (digitalRead(RELAY_3) == LOW) {
-                    relay.turnOFF(3,consumers);
-                }
-                if (needPower()) {
-                    if (digitalRead(RELAY_2) == LOW) {
-                        if ((consumers[1].current > 800)) {
-                            relay.turnOFF(2, consumers);
-                        } else {
-                            if (digitalRead(RELAY_4) == LOW) {
-                                relay.turnOFF(4, consumers);
-                            }
-                        }
-                        if (needPower()) {
-                            if (digitalRead(RELAY_4) == HIGH) {
-                                relay.turnON(4, consumers);
-                            }
-                        } else { // не требуется доп мощность
-                            if (digitalRead(RELAY_4) == LOW) {
-                                relay.turnOFF(4, consumers);
-                            }
-                        }
-                    } else {
-                        if (digitalRead(RELAY_4) == LOW) {
-                            relay.turnOFF(4, consumers);
-                        }
-                    }
-                } else {
-                    if (digitalRead(RELAY_4) == LOW) {
-                        relay.turnOFF(4, consumers);
-                    }
-                }
-            } else {
-                if (digitalRead(RELAY_4) == LOW) {
-                    relay.turnOFF(4, consumers);
-                } else {
-                    if (digitalRead(RELAY_2) == LOW) {
-                        if (digitalRead(RELAY_3) == LOW) {
-                        } else {
-                            relay.turnON(3, consumers);
-                            if (needPower()) {
-                                relay.turnOFF(2, consumers);
-                            }
-                        }
-                    } else {
-                        relay.turnON(2, consumers);
-                        if (needPower()) {
-                            relay.turnOFF(2, consumers);
-                        }
-                    }
-                }
-            }
-        } else {
-            if (low50()) {
-                if (digitalRead(RELAY_3) == LOW) {
-                    relay.turnOFF(3, consumers);
-                }
-                if (needPower()) {
-                    if (digitalRead(RELAY_2) == LOW) {
-                        relay.turnOFF(2, consumers);
-                    }
-                    if (needPower()) {
-                        relay.turnON(4, consumers);
-                    }
-                }
-            } else {
-                if (digitalRead(RELAY_2) == HIGH && !needPower()) {
-                    relay.turnON(2, consumers);
-                }
-                if (needPower()) {
-                    relay.turnON(4, consumers);
-                    relay.turnOFF(2, consumers);
-                }
-            }
-        }
-    } else {
-        if (digitalRead(RELAY_3) == LOW) {
+    Serial.print("low50");
+    Serial.println(low50());
+    Serial.print ("consumption_forecast(consumers, wind, solar, pzemClass)");
+    Serial.println(consumption_forecast(consumers, wind, solar, pzemClass));
+    Serial.print("needPower()");
+    Serial.println(needPower());
+
+
+    if (!low50()) {
+      relay.turnOFF(4, consumers);
+        if (consumption_forecast(consumers, wind, solar, pzemClass) >= 1) {
+          relay.turnON(2, consumers);
+          if (needPower() < -7000) {
             relay.turnOFF(3, consumers);
-        }
-        if (digitalRead(RELAY_2) == LOW) {
+          } else if (needPower() > 10600) {
+              relay.turnON(3, consumers);
+          }
+        }else{
+          relay.turnOFF(3, consumers);
+          if (needPower() < -7000) {
             relay.turnOFF(2, consumers);
-        }
-        if (needPower() && digitalRead(RELAY_4) == HIGH) {
+          } else if (needPower() > 10600) {
+            relay.turnON(2, consumers);
+          }
+        }            
+    } else if (low50()) {
+        if (consumption_forecast(consumers, wind, solar, pzemClass) >= 1) {
+            relay.turnOFF(2, consumers);
+        } 
+            relay.turnOFF(3, consumers);
             relay.turnON(4, consumers);
-        }
     }
 }
 
 void economicalWork () {
 
-    relay.turnON(1, consumers);
+ relay.turnON(1, consumers);
     // relay.turnOFF(4, consumers);  СДЕЛАТЬ ВЫКЛЮЧЕНИЕ РЕЛЕ ПРИ ВКЛЮЧЕНИИ!!!!!!!!!!!!!
-
+    Serial.print("low50");
+    Serial.println(low50());
+    Serial.print ("consumption_forecast(consumers, wind, solar, pzemClass)");
+    Serial.println(consumption_forecast(consumers, wind, solar, pzemClass));
+    Serial.print("needPower()");
+    Serial.println(needPower());
 
     if (!low50()) {
         if (needPower() < -7000) {
@@ -213,6 +175,7 @@ void economicalWork () {
         }
     }
 }
+ 
 
 int powerConsumer3 = 0;
 int powerConsumer2 = 0;
@@ -298,40 +261,31 @@ void MaximumPowerWork (RelayData* consumers, double timeToChargeFromServer) { //
 int low75 () { //заряд аккума больше 75%?
     double batteryVoltageESP = analogRead(35) * 3.3 / 4096 * 5.3; //настоящие вольты //флур мб убрать
     batteryVoltage = batteryVoltageESP + (0.00028 * (1 + 0.0001 * (batteryVoltageESP - 12.5)) * (consumers[0].current + consumers[1].current + consumers[2].current - solar.current / 2 - wind.current / 2 - pzemClass.getA() * 4)); //мнимые вольты
-    return ((12.4 - batteryVoltage) / (12.4 - 7.2) < 0.75) ? 1 : 0;
-}
-int x = 0; // коэффициент преобразования из-за стабилизаторов
-int consumption_forecast (RelayData* consumers, RelayData wind, RelayData solar, InputAndOutput pzemClass) {// выработка больше потребления по рогнозам, я просто беру производство > потребления без прогноза =1, иначе 0
-//   return ((                                        consumers[0].current +
-//                                                    consumers[1].current +
-//                                                    consumers[2].current -
-//                                                    solar.current -
-//                                                    wind.current -
-//                                                    pzemClass.getA() * x ) < 0 ) ? 1 : 0;
 
-    return 0;
+    // Serial.println(batteryVoltage);
+
+    return (((batteryVoltage-7.2) / (14 - 7.2)) < 0.75) ? 1 : 0;
 }
+
+
 //перед началом работы алгоритма надо включить реле
   
-void MaximumReliabilityWork(RelayData* consumers, RelayData wind, RelayData solar, InputAndOutput pzemClass) { 
+void MaximumReliabilityWork(RelayData* consumers, RelayData wind, RelayData solar, InputAndOutput pzemClass) {
+
+    Serial.print("low50");
+    Serial.println(low50());
+    Serial.print ("consumption_forecast(consumers, wind, solar, pzemClass)");
+    Serial.println(consumption_forecast(consumers, wind, solar, pzemClass));
+    Serial.print("needPower()");
+    Serial.println(needPower());
+
     if (!consumption_forecast(consumers, wind, solar, pzemClass)) {
             relay.turnOFF(3, consumers);
             relay.turnON(4, consumers);
         if (!consumption_forecast(consumers, wind, solar, pzemClass)) {
             relay.turnOFF(2, consumers);
             relay.turnON(4, consumers);
-            if (!consumption_forecast(consumers, wind, solar, pzemClass)) {
-                relay.turnOFF(1, consumers);
-                relay.turnOFF(4, consumers);
-            //сообщение о невозможности работы алгоритма
 
-            //прислать mode c ифной об ошибке
-            } else if (!low75()) {
-                relay.turnON(1, consumers);
-                relay.turnOFF(4, consumers);
-            } else {
-                relay.turnON(4, consumers);
-            }
         } else if(!low75()){
             relay.turnON(2, consumers);
             relay.turnOFF(4, consumers);
@@ -364,7 +318,7 @@ void prepSensorsData (double tmp, RelayData* consumers, int relayNumber, int uni
             consumers[relayNumber].current = 0;
         }
     } else if (unit == VOLTAGE) {
-        if (tmp > 1) {
+        if (tmp > 2) {
             consumers[relayNumber].voltage = tmp;
         } else {
             consumers[relayNumber].voltage = 0;
@@ -404,7 +358,7 @@ void loop() {
     //попытка законнектиться к серверу
     while (!isConnectToServer) {
         //connect to server
-        const uint16_t port = 2001; // port TCP server
+        const uint16_t port = 2000; // port TCP server
         const char * host = "192.168.3.10"; // ip or dns
         Serial.print("Connecting to ");
         Serial.println(host);
@@ -531,6 +485,7 @@ void loop() {
             size = client.available();
             int size_check = size;
             int i = 0;
+            Serial.println(size);
 
             while (size) {
                 #ifdef DEBAG
@@ -550,6 +505,8 @@ void loop() {
                     #ifdef DEBUG
                     Serial.println("switch mode check");
                     #endif
+
+                                                                        Serial.println(modeData->factor);
 
                     switch (modeData->mode) {
                     case Manual: {
@@ -599,6 +556,7 @@ void loop() {
                     // relayData->relayNumber - номер переключенного реле
                     // relayData->status - новый статус реле
                     // далее в коде переключить реле
+                    Serial.println("Switch reley");
 
                     if (relayData->status == 0) {
                         relay.turnOFF (relayData->relayNumber, consumers);
