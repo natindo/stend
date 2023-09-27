@@ -8,6 +8,15 @@
 // #define DEBAG
 
 //Волк
+// `sfbgzfd
+// bxzcv
+// b
+// cxv
+// bzcx
+// vb
+// xcv
+// bzcv
+
 
 #define RELAY_1 26
 #define RELAY_2 25
