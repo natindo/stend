@@ -104,13 +104,13 @@ int needPower(){
     consumers[1].voltage * consumers[1].current + consumers[2].voltage * consumers[2].current));
 }
 
-int low50 () {
+int low (double percent) {
     double batteryVoltageESP = analogRead(35) * 3.3 / 4096 * 5.3; //настоящие вольты //флур мб убрать
     batteryVoltage = batteryVoltageESP + (0.00028 * (1 + 0.0001 * (batteryVoltageESP - 12.5)) * (consumers[0].current + consumers[1].current + consumers[2].current - solar.current / 2 - wind.current / 2 - pzemClass.getA() * 4)); //мнимые вольты
 
     // Serial.println(batteryVoltage);
 
-    return (((batteryVoltage-7.2) / (14 - 7.2)) < 0.5) ? 1 : 0;
+    return (((batteryVoltage-7.2) / (14 - 7.2)) < percent /*0.5*/) ? 1 : 0;
 }
 
 void ecoWork (int factor) { // экологичный ждёт проноза
@@ -125,7 +125,7 @@ void ecoWork (int factor) { // экологичный ждёт проноза
     // Serial.println(needPower());
 
 
-    if (!low50()) {
+    if (!low(0.5)) {
       relay.turnOFF(4, consumers);
         if (factor >= 1) { // генерация больше подтребления
           relay.turnON(2, consumers);
@@ -142,7 +142,7 @@ void ecoWork (int factor) { // экологичный ждёт проноза
             relay.turnON(2, consumers);
           }
         }            
-    } else if (low50()) {
+    } else if (low(0.5)) {
         if (factor >= 1) {
             relay.turnOFF(2, consumers);
         } 
@@ -151,40 +151,117 @@ void ecoWork (int factor) { // экологичный ждёт проноза
     }
 }
 
-void economicalWork () {
+void economicalWork (int factor) {
 
- relay.turnON(1, consumers);
-    // relay.turnOFF(4, consumers);  СДЕЛАТЬ ВЫКЛЮЧЕНИЕ РЕЛЕ ПРИ ВКЛЮЧЕНИИ!!!!!!!!!!!!!
-    // Serial.print("low50");
-    // Serial.println(low50());
-    // Serial.print ("consumption_forecast(consumers, wind, solar, pzemClass)");
-    // Serial.println(consumption_forecast(consumers, wind, solar, pzemClass));
-    // Serial.print("needPower()");
-    // Serial.println(needPower());
+//  relay.turnON(1, consumers);
+//     // relay.turnOFF(4, consumers);  СДЕЛАТЬ ВЫКЛЮЧЕНИЕ РЕЛЕ ПРИ ВКЛЮЧЕНИИ!!!!!!!!!!!!!
+//     // Serial.print("low50");
+//     // Serial.println(low50());
+//     // Serial.print ("consumption_forecast(consumers, wind, solar, pzemClass)");
+//     // Serial.println(consumption_forecast(consumers, wind, solar, pzemClass));
+//     // Serial.print("needPower()");
+//     // Serial.println(needPower());
 
-    if (!low50()) {
-        if (needPower() < -10000) {
-            if (consumers[2].status == 1) {
-                relay.turnOFF(3, consumers);
-            } else { 
-                relay.turnOFF(2, consumers);
-            }
-        } else if (needPower() > 10600) {
-            if (consumers[1].status == 0) {
+//     if (!low50()) {
+//         if (needPower() < -10000) {
+//             if (consumers[2].status == 1) {
+//                 relay.turnOFF(3, consumers);
+//             } else { 
+//                 relay.turnOFF(2, consumers);
+//             }
+//         } else if (needPower() > 10600) {
+//             if (consumers[1].status == 0) {
+//                 relay.turnON(2, consumers);
+//             } else {
+//                 relay.turnON(3, consumers);
+//             }
+//         }
+//     } else if (low50()) {
+//         relay.turnOFF(3, consumers);
+//         relay.turnOFF(2, consumers);
+//         if (needPower() < 0) {
+//             relay.turnON(4, consumers);
+//         } else {
+//             relay.turnOFF(4, consumers);
+//         }
+//     }
+
+    if (factor >= 1) {
+        if (!low(0.5)) {
+            if (!low(0.95)) {
+                relay.turnOFF(4, consumers);
                 relay.turnON(2, consumers);
-            } else {
                 relay.turnON(3, consumers);
+            } else {
+                relay.turnOFF(4, consumers);
+                relay.turnON(2, consumers);
+                if (1/*произв > потребления на 7.5*/) {
+                    relay.turnON(3, consumers);
+                } else if (1/*произв > потребления на -10*/) {
+                    relay.turnOFF(3, consumers);
+                }
+            }
+        } else {
+            if (!low(0.2)) {
+                relay.turnOFF(4, consumers);
+                relay.turnOFF(3, consumers);
+                if (needPower() > 7500/*???????????????*/) {
+                    relay.turnON(2, consumers);
+                } else if (needPower() < -10000) {
+                    relay.turnOFF(2, consumers);
+                }
+            } else {
+                relay.turnON(4, consumers);
+                relay.turnOFF(2, consumers);
+                relay.turnOFF(3, consumers);
             }
         }
-    } else if (low50()) {
-        relay.turnOFF(3, consumers);
-        relay.turnOFF(2, consumers);
-        if (needPower() < 0) {
-            relay.turnON(4, consumers);
+    } else {
+        if (!low(0.5)) {
+            if (!low(0.95)) {
+                relay.turnON(4, consumers);
+                if (1/*произв > потребления на 7.5*/) {
+                    if (digitalRead(RELAY_2) == HIGH) {
+                        relay.turnON(2, consumers);
+                    } else {
+                        relay.turnON(3, consumers);
+                    }
+                } else if (1/*произв > потребления на -10*/) {
+                    if (digitalRead(RELAY_3) == LOW) {
+                        relay.turnOFF(3, consumers);
+                    } else {
+                        relay.turnOFF(2, consumers);
+                    }
+                }
+            } else {
+                relay.turnON(4, consumers);
+                relay.turnOFF(3, consumers);
+                if (needPower() > 7500/*???????????????*/) {
+                    relay.turnON(2, consumers);
+                } else if (needPower() < -10000) {
+                    relay.turnOFF(2, consumers);
+                }
+            }
         } else {
-            relay.turnOFF(4, consumers);
+            relay.turnON(4, consumers);
+            relay.turnOFF(3, consumers);
+            relay.turnOFF(2, consumers);
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }
  
 
@@ -469,8 +546,8 @@ void loop() {
 
     // Получение статусов модуля реле
     consumers[0].status = (digitalRead(RELAY_1) == LOW) ? 1 : 0;
-    consumers[1].status = (digitalRead(RELAY_1) == LOW) ? 1 : 0;
-    consumers[2].status = (digitalRead(RELAY_1) == LOW) ? 1 : 0;
+    consumers[1].status = (digitalRead(RELAY_2) == LOW) ? 1 : 0;
+    consumers[2].status = (digitalRead(RELAY_3) == LOW) ? 1 : 0;
 
     //инициализация I2C и INA
     TwoWire I2Cone = TwoWire(0);
@@ -699,7 +776,7 @@ void loop() {
             case 4: {
                 //MaximumEconomy
                 MaximumReliabilityRelayTurnOn = 0;
-                economicalWork();
+                economicalWork(factor);
                 delay(200);
                 break;
             }
