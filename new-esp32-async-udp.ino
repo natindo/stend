@@ -5,6 +5,7 @@
 #include "esp_structs.h"
 #include "newserver.h"
 #include <utility>
+#include <math.h>
 // #define DEBAG
 
 //Волк
@@ -74,17 +75,6 @@ HardwareSerial PzemSerial2(2);     // Use hwserial UART2 at pins IO-16 (RX2) and
 PZEM004T pzem(&PzemSerial2);
 IPAddress pzemIP(192, 168, 1, 1);
 
-// int consumption_forecast (RelayData* consumers, RelayData wind, RelayData solar, InputAndOutput pzemClass) {// выработка больше потребления по рогнозам, я просто беру производство > потребления без прогноза =1, иначе 0
-// //   return ((                                        consumers[0].current +
-// //                                                    consumers[1].current +
-// //                                                    consumers[2].current -
-// //                                                    solar.current -
-// //                                                    wind.current -
-// //                                                    pzemClass.getA() * x ) < 0 ) ? 1 : 0;
-
-//     return 1;
-// }
-
 int needPower(){
 
     consumers[0].voltage = ina219_A1.getBusVoltage_V();
@@ -113,79 +103,68 @@ int low (double percent) {
     return (((batteryVoltage-7.2) / (14 - 7.2)) < percent /*0.5*/) ? 1 : 0;
 }
 
-void ecoWork (int factor) { // экологичный ждёт проноза
-   relay.turnON(1, consumers);
-    // relay.turnOFF(4, consumers);  СДЕЛАТЬ ВЫКЛЮЧЕНИЕ РЕЛЕ ПРИ ВКЛЮЧЕНИИ!!!!!!!!!!!!!
+void ecoWork (int factor) {
 
-    // Serial.print("low50");
-    // Serial.println(low50());
-    // Serial.print ("consumption_forecast(consumers, wind, solar, pzemClass)");
-    // Serial.println(consumption_forecast(consumers, wind, solar, pzemClass));
-    // Serial.print("needPower()");
-    // Serial.println(needPower());
-
-
-    if (!low(0.5)) {
-      relay.turnOFF(4, consumers);
-        if (factor >= 1) { // генерация больше подтребления
-          relay.turnON(2, consumers);
-          if (needPower() < -10000) {
-            relay.turnOFF(3, consumers);
-          } else if (needPower() > 10600) {
-              relay.turnON(3, consumers);
-          }
-        }else{
-          relay.turnOFF(3, consumers);
-          if (needPower() < -10000) {
-            relay.turnOFF(2, consumers);
-          } else if (needPower() > 10600) {
-            relay.turnON(2, consumers);
-          }
-        }            
-    } else if (low(0.5)) {
-        if (factor >= 1) {
-            relay.turnOFF(2, consumers);
-        } 
-            relay.turnOFF(3, consumers);
+    if (factor > 1) {
+        if (!low(0.5)) {
+            if (!low(0.95)) {
+                relay.turnOFF(4, consumers);
+                relay.turnON(2, consumers);
+                relay.turnON(3, consumers);
+            } else {
+                relay.turnOFF(4, consumers);
+                relay.turnON(2, consumers);
+                if ((factor / 100) > 7.5) {
+                    relay.turnON(3, consumers);
+                } else if ((factor / 100) < 10) {
+                    relay.turnOFF(3, consumers);
+                }
+            }
+        } else {
+            if (!low(0.2)) {
+                relay.turnOFF(4, consumers);
+                relay.turnOFF(3, consumers);
+                if ((factor / 100) > 7.5) {
+                    relay.turnON(2, consumers);
+                } else if ((factor / 100) < 10) {
+                    relay.turnOFF(2, consumers);
+                }
+            } else {
+                relay.turnON(4, consumers);
+                relay.turnOFF(2, consumers);
+                relay.turnOFF(3, consumers);
+            }
+        }
+    } else {
+        if (!low(0.5)) {
+            if (!low(0.95)) {
+                relay.turnOFF(4, consumers);
+                if ((factor / 100) > 7.5) {
+                    relay.turnON(2, consumers);
+                    relay.turnON(3, consumers);
+                } else if ((factor / 100) < 10) {
+                    relay.turnOFF(2, consumers);
+                    relay.turnOFF(3, consumers);
+                }
+            } else {
+                relay.turnON(4, consumers);
+                relay.turnOFF(3, consumers);
+                if ((factor / 100) > 7.5) {
+                    relay.turnON(2, consumers);
+                } else if ((factor / 100) < 10) {
+                    relay.turnOFF(2, consumers);
+                }
+            }
+        } else {
             relay.turnON(4, consumers);
+            relay.turnOFF(3, consumers);
+            relay.turnOFF(2, consumers);
+        }
     }
+
 }
 
 void economicalWork (int factor) {
-
-//  relay.turnON(1, consumers);
-//     // relay.turnOFF(4, consumers);  СДЕЛАТЬ ВЫКЛЮЧЕНИЕ РЕЛЕ ПРИ ВКЛЮЧЕНИИ!!!!!!!!!!!!!
-//     // Serial.print("low50");
-//     // Serial.println(low50());
-//     // Serial.print ("consumption_forecast(consumers, wind, solar, pzemClass)");
-//     // Serial.println(consumption_forecast(consumers, wind, solar, pzemClass));
-//     // Serial.print("needPower()");
-//     // Serial.println(needPower());
-
-//     if (!low50()) {
-//         if (needPower() < -10000) {
-//             if (consumers[2].status == 1) {
-//                 relay.turnOFF(3, consumers);
-//             } else { 
-//                 relay.turnOFF(2, consumers);
-//             }
-//         } else if (needPower() > 10600) {
-//             if (consumers[1].status == 0) {
-//                 relay.turnON(2, consumers);
-//             } else {
-//                 relay.turnON(3, consumers);
-//             }
-//         }
-//     } else if (low50()) {
-//         relay.turnOFF(3, consumers);
-//         relay.turnOFF(2, consumers);
-//         if (needPower() < 0) {
-//             relay.turnON(4, consumers);
-//         } else {
-//             relay.turnOFF(4, consumers);
-//         }
-//     }
-
     if (factor >= 1) {
         if (!low(0.5)) {
             if (!low(0.95)) {
@@ -195,9 +174,9 @@ void economicalWork (int factor) {
             } else {
                 relay.turnOFF(4, consumers);
                 relay.turnON(2, consumers);
-                if (1/*произв > потребления на 7.5*/) {
+                if ((factor / 100) > 7.5) {
                     relay.turnON(3, consumers);
-                } else if (1/*произв > потребления на -10*/) {
+                } else if ((factor / 100) < 10) {
                     relay.turnOFF(3, consumers);
                 }
             }
@@ -205,7 +184,7 @@ void economicalWork (int factor) {
             if (!low(0.2)) {
                 relay.turnOFF(4, consumers);
                 relay.turnOFF(3, consumers);
-                if (needPower() > 7500/*???????????????*/) {
+                if (needPower() > 7500) {
                     relay.turnON(2, consumers);
                 } else if (needPower() < -10000) {
                     relay.turnOFF(2, consumers);
@@ -220,13 +199,13 @@ void economicalWork (int factor) {
         if (!low(0.5)) {
             if (!low(0.95)) {
                 relay.turnON(4, consumers);
-                if (1/*произв > потребления на 7.5*/) {
+                if ((factor / 100) > 7.5) {
                     if (digitalRead(RELAY_2) == HIGH) {
                         relay.turnON(2, consumers);
                     } else {
                         relay.turnON(3, consumers);
                     }
-                } else if (1/*произв > потребления на -10*/) {
+                } else if ((factor / 100) < 10) {
                     if (digitalRead(RELAY_3) == LOW) {
                         relay.turnOFF(3, consumers);
                     } else {
@@ -236,7 +215,7 @@ void economicalWork (int factor) {
             } else {
                 relay.turnON(4, consumers);
                 relay.turnOFF(3, consumers);
-                if (needPower() > 7500/*???????????????*/) {
+                if (needPower() > 7500) {
                     relay.turnON(2, consumers);
                 } else if (needPower() < -10000) {
                     relay.turnOFF(2, consumers);
@@ -249,100 +228,25 @@ void economicalWork (int factor) {
         }
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 }
- 
-
-int powerConsumer3 = 0;
-int powerConsumer2 = 0;
 
 double percentageOfCharge (RelayData* consumers, RelayData wind, RelayData solar, InputAndOutput ,int batteryVoltage) {
     double batteryVoltageESP = analogRead(35) * 3.3 / 4096 * 5.3; //настоящие вольты //флур мб убрать
-    batteryVoltage = batteryVoltageESP + (0.00028 * (1 + 0.0001 * (batteryVoltageESP - 12.5)) * (consumers[0].current + consumers[1].current + consumers[2].current - solar.current / 2 - wind.current / 2 - pzemClass.getA() * 4)); //мнимые вольты
+    //batteryVoltage = batteryVoltageESP + (0.00028 * (1 + 0.0001 * (batteryVoltageESP - 12.5)) * (consumers[0].current + consumers[1].current + consumers[2].current - solar.current / 2 - wind.current / 2 - pzemClass.getA() * 4)); //мнимые вольты
 
-    // Serial.println(((batteryVoltage-7.2) / (14 - 7.2))*100);
-    // Serial.println("batteryVoltage");
+    double Rinp = 0.03;
+    double KPD_2 = 1.1;
+    double KPD_1 = 0.5;
+    double PPower = (wind.current * (wind.voltage - 0.6) + solar.current * (solar.voltage - 0.6) + pzemClass.getA() * pzemClass.getV() * KPD_1) - (consumers[0].current * consumers[0].voltage + consumers[1].current * consumers[1].voltage + consumers[2].current * consumers[2].voltage) * KPD_2;
+    batteryVoltage = sqrt(Rinp * PPower) + batteryVoltageESP;
+
+    Serial.println("batteryVoltage");
+    Serial.println(batteryVoltage);
+    Serial.println("batteryVoltage");
 
     return (((batteryVoltage-7.2) / (14 - 7.2))*100);
 }
 
-double timeUntilBatteryIsCharged (RelayData* consumers, RelayData wind, RelayData solar, InputAndOutput pzemClass) {
-    // Serial.print("percentageOfCharge");
-    // Serial.println(percentageOfCharge(consumers, wind, solar, pzemClass, batteryVoltage));
-
-    // Serial.println((2200.0 * 2 * (1 - percentageOfCharge(consumers, wind, solar, pzemClass, batteryVoltage) / 100)));
-    // Serial.println("consumers[0].current +consumers[1].current +)");
-    Serial.print("------");
-Serial.print(((2200.0 * 2 * (1 - percentageOfCharge(consumers, wind, solar, pzemClass, batteryVoltage) / 100))/( -(
-                                                   consumers[0].current +
-                                                   consumers[1].current +
-                                                   consumers[2].current -
-                                                   solar.current -
-                                                   wind.current -
-                                                   pzemClass.getA()*7)*1000)) / 0.7);
-Serial.print("------");
-    return ((2200.0 * 2 * (1 - percentageOfCharge(consumers, wind, solar, pzemClass, batteryVoltage) / 100))/( -(
-                                                   consumers[0].current +
-                                                   consumers[1].current +
-                                                   consumers[2].current -
-                                                   solar.current -
-                                                   wind.current -
-                                                   pzemClass.getA()*7)*1000)) / 0.7;
-}
-
-double timeUntilBatteryIsCharged (RelayData* consumers, RelayData wind, RelayData solar, InputAndOutput pzemClass,int power2, int powerConsumerNumber = 0) {
-     Serial.print("percentageOfCharge");
-Serial.print("------");
-Serial.print(powerConsumerNumber);
-Serial.print("------");
-     Serial.println(((2200.0 * 2 * (1 - percentageOfCharge(consumers, wind, solar, pzemClass, batteryVoltage) / 100))/( -(
-                                                   consumers[0].current +
-                                                   power2 +
-                                                   powerConsumerNumber -
-                                                   solar.current -
-                                                   wind.current -
-                                                   pzemClass.getA()*7)*1000)) / 0.7);
-    return ((2200.0 * 2 * (1 - percentageOfCharge(consumers, wind, solar, pzemClass, batteryVoltage) / 100))/( -(
-                                                   consumers[0].current +
-                                                   consumers[1].current +
-                                                   powerConsumerNumber -
-                                                   solar.current -
-                                                   wind.current -
-                                                   pzemClass.getA()*7)*1000)) / 0.7;
-}
-
-double timeUntilBatteryIsCharged (RelayData* consumers, RelayData wind, RelayData solar) {
-    // Serial.print("percentageOfCharge");
-    // Serial.println(percentageOfCharge(consumers, wind, solar, pzemClass, batteryVoltage));
-    Serial.print("------");
-Serial.print(((2200.0 * 2 * (1 - percentageOfCharge(consumers, wind, solar, pzemClass, batteryVoltage) / 100))/( -(
-                                                   consumers[0].current +
-                                                   consumers[1].current +
-                                                   consumers[2].current -
-                                                   solar.current -
-                                                   wind.current -
-                                                   pzemClass.getA()*7)*1000)) / 0.7);
-Serial.print("------");
-    return ((2200.0 * 2 * (1 - percentageOfCharge(consumers, wind, solar, pzemClass, batteryVoltage) / 100))/( -(
-                                                   consumers[0].current +
-                                                   consumers[1].current +
-                                                   consumers[2].current -
-                                                   solar.current -
-                                                   wind.current -
-                                                   pzemClass.getA()*7)*1000)) / 0.7;
-}
 int low75 () { //заряд аккума больше 75%?   //тут есть сомнительное место с пземом
     double batteryVoltageESP = analogRead(35) * 3.3 / 4096 * 5.3; //настоящие вольты //флур мб убрать
     batteryVoltage = batteryVoltageESP + (0.00028 * (1 + 0.0001 * (batteryVoltageESP - 12.5)) * (consumers[0].current + consumers[1].current + consumers[2].current - solar.current / 2 - wind.current / 2 - pzemClass.getA() * 4)); //мнимые вольты
@@ -352,103 +256,110 @@ int low75 () { //заряд аккума больше 75%?   //тут есть �
     return (((batteryVoltage-7.2) / (14 - 7.2)) < 0.75) ? 1 : 0;
 }
 
-void MaximumPowerWork (RelayData* consumers, int factor) { //принимает сколько времени нужно для зарядки
-  relay.turnON(1, consumers);
-
-  Serial.println(needPower());
-
-    if (!low75()) {
-      relay.turnON(2, consumers);
-        if (factor >= 1) { // генерация больше подтребления
-          if (needPower() < -10000) {
-            relay.turnOFF(3, consumers);
-          } else if (needPower() > 10600) {
-              relay.turnON(3, consumers);
-          }
+void MaximumPowerWork (RelayData* consumers, int factor) {
+    if (factor > 1) {
+        if (!low(0.5)) {
+            if (!low(0.95)) {
+                relay.turnOFF(4, consumers);
+                relay.turnON(2, consumers);
+                relay.turnON(3, consumers);
+            } else {
+                if (needPower() <= 0) {
+                    relay.turnON(4, consumers);
+                }
+                relay.turnON(2, consumers);
+                relay.turnON(3, consumers);
+            }
         } else {
-          relay.turnON(4, consumers);
-          if (needPower() < -10000) {
-            relay.turnOFF(3, consumers);
-          } else if (needPower() > 10600) {
-              relay.turnON(3, consumers);
-          }
-        }            
-    } else if (low75()) {
-      relay.turnOFF(3, consumers);
-      relay.turnON(4, consumers);
-      if (needPower() < -10000) {
-        relay.turnOFF(2, consumers);
-      } else if (needPower() > 10600) {
-        relay.turnON(2, consumers);
-      }
+            if (!low(0.2)) {
+                if (needPower() <= 0) {
+                    relay.turnON(4, consumers);
+                }
+                relay.turnON(2, consumers);
+                relay.turnON(3, consumers);
+            } else {
+                relay.turnON(4, consumers);
+                relay.turnON(2, consumers);
+                if ((factor / 100) > 7.5) {
+                    relay.turnON(3, consumers);
+                } else if ((factor / 100) < 10) {
+                    relay.turnOFF(3, consumers);
+                }
+            }
+        }
+    } else {
+        if (!low(0.5)) {
+            if (!low(0.95)) {
+                relay.turnOFF(4, consumers);
+                relay.turnON(2, consumers);
+                relay.turnON(3, consumers);
+            } else {
+                if (needPower() <= 0) {
+                    relay.turnON(4, consumers);
+                }
+                relay.turnON(2, consumers);
+                relay.turnON(3, consumers);
+            }
+        } else {
+            relay.turnON(4, consumers);
+                if ((factor / 100) > 7.5) {
+                    relay.turnON(2, consumers);
+                    relay.turnON(3, consumers);
+                } else if ((factor / 100) < 10) {
+                    relay.turnOFF(2, consumers);
+                    relay.turnOFF(3, consumers);
+                }
+        } 
     }
 }
-
-
-
-
-
-//перед началом работы алгоритма надо включить реле
-  
-                        // void MaximumReliabilityWork(RelayData* consumers, RelayData wind, RelayData solar, InputAndOutput pzemClass) {
-                        //     relay.turnON(1, consumers);
-
-                        //     // Serial.print("low50");
-                        //     // Serial.println(low50());
-                        //     // Serial.print ("consumption_forecast(consumers, wind, solar, pzemClass)");
-                        //     // Serial.println(consumption_forecast(consumers, wind, solar, pzemClass));
-                        //     // Serial.print("needPower()");
-                        //     // Serial.println(needPower());
-
-                        //     if (!factor) {
-                        //             relay.turnOFF(3, consumers);
-                        //             relay.turnON(4, consumers);
-                        //         if (!factor) {
-                        //             relay.turnOFF(2, consumers);
-                        //             relay.turnON(4, consumers);
-
-                        //         } else if(!low75()){
-                        //             relay.turnON(2, consumers);
-                        //             relay.turnOFF(4, consumers);
-                        //         } else { 
-                        //             relay.turnON(4, consumers); 
-                        //         }
-                        //     } else if (!low75()) {
-                        //         relay.turnON(3, consumers);
-                        //         relay.turnOFF(4, consumers);
-                        //     } else {
-                        //         relay.turnON(4, consumers);
-                        //     }
-                        // }
 
 int returnPower (RelayData* consumers, RelayData wind, RelayData solar, InputAndOutput pzemClass) { // тут тоже может быть есть сомнительные моменты
     return solar.current * solar.voltage + wind.current * wind.voltage + pzemClass.getA() * pzemClass.getV() - consumers[0].current * consumers[0].voltage - consumers[1].current * consumers[1].voltage - consumers[2].current * consumers[2].voltage;
 }
 
-void MaximumReliabilityWork(RelayData* consumers, RelayData wind, RelayData solar, InputAndOutput pzemClass, int factor) {
-    relay.turnON(1, consumers);
-
-    if (factor >= 1) {
-        if (!low75()) {
-            relay.turnON(2, consumers);
-            delay(50);
-            relay.turnON(3, consumers);
-            delay(50);
-            relay.turnOFF(4, consumers);
+void MaximumReliabilityWork(RelayData* consumers, int factor) {
+    if (factor > 1) {
+        if (!low(0.5)) {
+            if (!low(0.95)) {
+                relay.turnOFF(4, consumers);
+                relay.turnON(2, consumers);
+                relay.turnON(3, consumers);
+            } else {
+                relay.turnON(4, consumers);
+                relay.turnON(2, consumers);
+                if ((factor / 100) > 7.5) {
+                    relay.turnON(3, consumers);
+                } else if ((factor / 100) < 10) {
+                    relay.turnOFF(3, consumers);
+                }
+            }
         } else {
-            relay.turnON(4, consumers);
+//???????????????????????????????????????????????????????????????
         }
     } else {
-        relay.turnOFF(3, consumers);
-        delay(50);
-        relay.turnON(4, consumers);
-        if (!low75()) {
-            relay.turnON(2, consumers);
-        } else {
-            if (returnPower(consumers, wind, solar, pzemClass) > 7.5) {
+        if (!low(0.5)) {
+            if (!low(0.95)) {
+                relay.turnOFF(4, consumers);
                 relay.turnON(2, consumers);
-            } else if (returnPower(consumers, wind, solar, pzemClass) > -10) {
+                relay.turnON(3, consumers);
+            } else {
+                relay.turnON(4, consumers);
+                if ((factor / 100) > 7.5) {
+                    relay.turnON(2, consumers);
+                    relay.turnON(3, consumers);
+                } else if ((factor / 100) < 10) {
+                    relay.turnOFF(2, consumers);
+                    relay.turnOFF(3, consumers);
+                }
+            }
+        } else {
+            relay.turnON(4, consumers);
+            if ((factor / 100) > 7.5) {
+                relay.turnON(2, consumers);
+                relay.turnON(3, consumers);
+            } else if ((factor / 100) < 10) {
                 relay.turnOFF(2, consumers);
+                relay.turnOFF(3, consumers);
             }
         }
     }
@@ -513,7 +424,7 @@ void loop() {
     while (!isConnectToServer) {
         //connect to server
         const uint16_t port = 2000; // port TCP server
-        const char * host = "192.168.3.3"; // ip or dns
+        const char * host = "192.168.3.10"; // ip or dns
         Serial.print("Connecting to ");
         Serial.println(host);
         // Use WiFiClient class to create TCP connections
@@ -607,6 +518,34 @@ void loop() {
                 } else {
                     batteryVoltageToServer = tmp_batteryVoltageToServer;
                 }
+
+                double batteryVoltageESP = analogRead(35) * 3.3 / 4096 * 5.3; //настоящие вольты //флур мб убрать
+                //batteryVoltage = batteryVoltageESP + (0.00028 * (1 + 0.0001 * (batteryVoltageESP - 12.5)) * (consumers[0].current + consumers[1].current + consumers[2].current - solar.current / 2 - wind.current / 2 - pzemClass.getA() * 4)); //мнимые вольты
+
+                double Rinp = 0.03;
+                double KPD_2 = 0.5;
+                double KPD_1 = 0.5;
+                double KPD_3 = 1.2;
+                double PPower = ((wind.current * (wind.voltage - 0.6) + solar.current * (solar.voltage - 0.6)) * KPD_3+ pzemClass.getA() * pzemClass.getV() * KPD_1) - (consumers[0].current * consumers[0].voltage + consumers[1].current * consumers[1].voltage + consumers[2].current * consumers[2].voltage) * KPD_2;
+                bool pointer = false;
+                double batteryVoltagePrep = sqrt(abs(Rinp * PPower));// + batteryVoltageESP;
+                if (Rinp * PPower < 0) {
+                    batteryVoltage = batteryVoltagePrep * (-1) + batteryVoltageESP;
+                } else {
+                    batteryVoltage = batteryVoltagePrep + batteryVoltageESP;
+                }
+
+                Serial.println("PPower");
+                Serial.println(PPower);
+                Serial.println("PPower");
+
+                Serial.println("batteryVoltage");
+                Serial.println(batteryVoltage);
+                Serial.println("batteryVoltage");
+
+                Serial.println("solar.current");
+                Serial.println(solar.current);
+                Serial.println("solar.current");
 
                 prepSensorsData(ina219_A1.getBusVoltage_V(), consumers, 0, VOLTAGE);
                 prepSensorsData(ina219_A2.getBusVoltage_V(), consumers, 1, VOLTAGE);
@@ -758,7 +697,7 @@ void loop() {
                     relay.turnON(4, consumers);
                     MaximumReliabilityRelayTurnOn = 1;
                 }
-                MaximumReliabilityWork(consumers, wind, solar, pzemClass, factor);
+                MaximumReliabilityWork(consumers, factor);
                 break;
             }
             case 2: {

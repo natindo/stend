@@ -35,7 +35,7 @@ struct Auth {
 
 struct Mode {
     ModeType mode;
-    int factor;
+    double factor;
 };
 
 struct SwitchRelay {
