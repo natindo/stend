@@ -53,7 +53,7 @@ struct SensorsData {
     RelayData solar;
     RelayData wind;
     RelayData generator;
-    int battery_voltage;
+    double battery_voltage;
     RelayData consumer[RELAYS_NUMBER];
 };
 

@@ -23,7 +23,7 @@ std::pair<char*, int> errorMessage () {
 
 // функция принимает аргументами структуры RelayData, которые заполняются просто установкой полей структуры
 // возвращает char* выделенной памяти !НЕ ЗАБЫТЬ ПОЧИСТИТЬ!
-std::pair<char*, int> encodeSensorsData(RelayData solar, RelayData wind, RelayData generator, int batteryVoltage, RelayData consumers[RELAYS_NUMBER]) {
+std::pair<char*, int> encodeSensorsData(RelayData solar, RelayData wind, RelayData generator, double batteryVoltage, RelayData consumers[RELAYS_NUMBER]) {
 
     int dataSize = 0;
 
@@ -40,6 +40,8 @@ std::pair<char*, int> encodeSensorsData(RelayData solar, RelayData wind, RelayDa
     payload.wind = wind;
     payload.generator = generator;
     payload.battery_voltage = batteryVoltage;
+
+    Serial.println(payload.battery_voltage);
 
     for (int i = 0; i < RELAYS_NUMBER; ++i) {
         payload.consumer[i] = consumers[i];

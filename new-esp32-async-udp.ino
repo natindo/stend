@@ -7,7 +7,7 @@
 #include <utility>
 #include <math.h>
 // #define DEBAG
-
+//kek
 //Волк
 // `sfbgzfd
 // bxzcv
@@ -18,11 +18,13 @@
 // xcv
 // bzcv
 
+#define BatteryPin 35
 
 #define RELAY_1 26
 #define RELAY_2 25
 #define RELAY_3 33
 #define RELAY_4 32
+#define RELAY_MEASURED 14
 
 #define SDA_1 5
 #define SCL_1 18
@@ -68,12 +70,21 @@ double batteryVoltage;
 
 
 // Объект модуля с четырьмя реле
-Relay relay(RELAY_1, RELAY_2, RELAY_3, RELAY_4);
+Relay relay(RELAY_1, RELAY_2, RELAY_3, RELAY_4, RELAY_MEASURED);
 
 // Объекты для работы с модулем измерения переменного тока и напряжения
 HardwareSerial PzemSerial2(2);     // Use hwserial UART2 at pins IO-16 (RX2) and IO-17 (TX2)
 PZEM004T pzem(&PzemSerial2);
 IPAddress pzemIP(192, 168, 1, 1);
+
+void measuredBattary () {
+    digitalWrite(RELAY_MEASURED, LOW);
+    delay(1000);
+    batteryVoltage = analogRead(35) * 3.3 / 4096 * 5.3;
+    delay(1000);
+    Serial.println(batteryVoltage);
+    digitalWrite(RELAY_MEASURED, HIGH);
+}
 
 int needPower(){
 
@@ -95,12 +106,9 @@ int needPower(){
 }
 
 int low (double percent) {
-    double batteryVoltageESP = analogRead(35) * 3.3 / 4096 * 5.3; //настоящие вольты //флур мб убрать
-    batteryVoltage = batteryVoltageESP + (0.00028 * (1 + 0.0001 * (batteryVoltageESP - 12.5)) * (consumers[0].current + consumers[1].current + consumers[2].current - solar.current / 2 - wind.current / 2 - pzemClass.getA() * 4)); //мнимые вольты
 
-    // Serial.println(batteryVoltage);
+    return (((batteryVoltage-7.2) / (14 - 7.2)) < percent) ? 1 : 0;
 
-    return (((batteryVoltage-7.2) / (14 - 7.2)) < percent /*0.5*/) ? 1 : 0;
 }
 
 void ecoWork (int factor) {
@@ -111,25 +119,25 @@ void ecoWork (int factor) {
                 relay.turnOFF(4, consumers);
                 relay.turnON(2, consumers);
                 relay.turnON(3, consumers);
-            } else {
+            } else if (low(0.92)) {
                 relay.turnOFF(4, consumers);
                 relay.turnON(2, consumers);
-                if ((factor / 100) > 7.5) {
+                if (needPower() > 7500) {
                     relay.turnON(3, consumers);
-                } else if ((factor / 100) < 10) {
+                } else if (needPower() < -10000) {
                     relay.turnOFF(3, consumers);
                 }
             }
-        } else {
+        } else if (low(0.47)){
             if (!low(0.2)) {
                 relay.turnOFF(4, consumers);
                 relay.turnOFF(3, consumers);
-                if ((factor / 100) > 7.5) {
+                if (needPower() > 7500) {
                     relay.turnON(2, consumers);
-                } else if ((factor / 100) < 10) {
+                } else if (needPower() < -10000) {
                     relay.turnOFF(2, consumers);
                 }
-            } else {
+            } else if (low(0.17)) {
                 relay.turnON(4, consumers);
                 relay.turnOFF(2, consumers);
                 relay.turnOFF(3, consumers);
@@ -139,23 +147,23 @@ void ecoWork (int factor) {
         if (!low(0.5)) {
             if (!low(0.95)) {
                 relay.turnOFF(4, consumers);
-                if ((factor / 100) > 7.5) {
+                if (needPower() > 7500) {
                     relay.turnON(2, consumers);
                     relay.turnON(3, consumers);
-                } else if ((factor / 100) < 10) {
+                } else if (needPower() < -10000) {
                     relay.turnOFF(2, consumers);
                     relay.turnOFF(3, consumers);
                 }
-            } else {
+            } else if (low(0.92)) {
                 relay.turnON(4, consumers);
                 relay.turnOFF(3, consumers);
-                if ((factor / 100) > 7.5) {
+                if (needPower() > 7500) {
                     relay.turnON(2, consumers);
-                } else if ((factor / 100) < 10) {
+                } else if (needPower() < -10000) {
                     relay.turnOFF(2, consumers);
                 }
             }
-        } else {
+        } else if (low(0.47)) {
             relay.turnON(4, consumers);
             relay.turnOFF(3, consumers);
             relay.turnOFF(2, consumers);
@@ -165,22 +173,23 @@ void ecoWork (int factor) {
 }
 
 void economicalWork (int factor) {
+    Serial.println(needPower());
     if (factor >= 1) {
         if (!low(0.5)) {
             if (!low(0.95)) {
                 relay.turnOFF(4, consumers);
                 relay.turnON(2, consumers);
                 relay.turnON(3, consumers);
-            } else {
+            } else if (low(0.92)) {
                 relay.turnOFF(4, consumers);
                 relay.turnON(2, consumers);
-                if ((factor / 100) > 7.5) {
+                if (needPower() > 7500) {
                     relay.turnON(3, consumers);
-                } else if ((factor / 100) < 10) {
+                } else if (needPower() < -10000) {
                     relay.turnOFF(3, consumers);
                 }
             }
-        } else {
+        } else if (low(0.47)) {
             if (!low(0.2)) {
                 relay.turnOFF(4, consumers);
                 relay.turnOFF(3, consumers);
@@ -189,7 +198,7 @@ void economicalWork (int factor) {
                 } else if (needPower() < -10000) {
                     relay.turnOFF(2, consumers);
                 }
-            } else {
+            } else if (low(0.17)) {
                 relay.turnON(4, consumers);
                 relay.turnOFF(2, consumers);
                 relay.turnOFF(3, consumers);
@@ -199,20 +208,20 @@ void economicalWork (int factor) {
         if (!low(0.5)) {
             if (!low(0.95)) {
                 relay.turnON(4, consumers);
-                if ((factor / 100) > 7.5) {
+                if (needPower() > 7500) {
                     if (digitalRead(RELAY_2) == HIGH) {
                         relay.turnON(2, consumers);
                     } else {
                         relay.turnON(3, consumers);
                     }
-                } else if ((factor / 100) < 10) {
+                } else if (needPower() < -10000) {
                     if (digitalRead(RELAY_3) == LOW) {
                         relay.turnOFF(3, consumers);
                     } else {
                         relay.turnOFF(2, consumers);
                     }
                 }
-            } else {
+            } else if (low(0.92)) {
                 relay.turnON(4, consumers);
                 relay.turnOFF(3, consumers);
                 if (needPower() > 7500) {
@@ -221,39 +230,13 @@ void economicalWork (int factor) {
                     relay.turnOFF(2, consumers);
                 }
             }
-        } else {
+        } else if (low(0.47)) {
             relay.turnON(4, consumers);
             relay.turnOFF(3, consumers);
             relay.turnOFF(2, consumers);
         }
     }
 
-}
-
-double percentageOfCharge (RelayData* consumers, RelayData wind, RelayData solar, InputAndOutput ,int batteryVoltage) {
-    double batteryVoltageESP = analogRead(35) * 3.3 / 4096 * 5.3; //настоящие вольты //флур мб убрать
-    //batteryVoltage = batteryVoltageESP + (0.00028 * (1 + 0.0001 * (batteryVoltageESP - 12.5)) * (consumers[0].current + consumers[1].current + consumers[2].current - solar.current / 2 - wind.current / 2 - pzemClass.getA() * 4)); //мнимые вольты
-
-    double Rinp = 0.03;
-    double KPD_2 = 1.1;
-    double KPD_1 = 0.5;
-    double PPower = (wind.current * (wind.voltage - 0.6) + solar.current * (solar.voltage - 0.6) + pzemClass.getA() * pzemClass.getV() * KPD_1) - (consumers[0].current * consumers[0].voltage + consumers[1].current * consumers[1].voltage + consumers[2].current * consumers[2].voltage) * KPD_2;
-    batteryVoltage = sqrt(Rinp * PPower) + batteryVoltageESP;
-
-    Serial.println("batteryVoltage");
-    Serial.println(batteryVoltage);
-    Serial.println("batteryVoltage");
-
-    return (((batteryVoltage-7.2) / (14 - 7.2))*100);
-}
-
-int low75 () { //заряд аккума больше 75%?   //тут есть сомнительное место с пземом
-    double batteryVoltageESP = analogRead(35) * 3.3 / 4096 * 5.3; //настоящие вольты //флур мб убрать
-    batteryVoltage = batteryVoltageESP + (0.00028 * (1 + 0.0001 * (batteryVoltageESP - 12.5)) * (consumers[0].current + consumers[1].current + consumers[2].current - solar.current / 2 - wind.current / 2 - pzemClass.getA() * 4)); //мнимые вольты
-
-    // Serial.println(batteryVoltage);
-
-    return (((batteryVoltage-7.2) / (14 - 7.2)) < 0.75) ? 1 : 0;
 }
 
 void MaximumPowerWork (RelayData* consumers, int factor) {
@@ -263,26 +246,26 @@ void MaximumPowerWork (RelayData* consumers, int factor) {
                 relay.turnOFF(4, consumers);
                 relay.turnON(2, consumers);
                 relay.turnON(3, consumers);
-            } else {
+            } else if (low(0.92)) {
                 if (needPower() <= 0) {
                     relay.turnON(4, consumers);
                 }
                 relay.turnON(2, consumers);
                 relay.turnON(3, consumers);
             }
-        } else {
+        } else if (low(0.47)) {
             if (!low(0.2)) {
                 if (needPower() <= 0) {
                     relay.turnON(4, consumers);
                 }
                 relay.turnON(2, consumers);
                 relay.turnON(3, consumers);
-            } else {
+            } else if (low(0.17)) {
                 relay.turnON(4, consumers);
                 relay.turnON(2, consumers);
-                if ((factor / 100) > 7.5) {
+                if (needPower() > 7500) {
                     relay.turnON(3, consumers);
-                } else if ((factor / 100) < 10) {
+                } else if (needPower() < -10000) {
                     relay.turnOFF(3, consumers);
                 }
             }
@@ -293,28 +276,24 @@ void MaximumPowerWork (RelayData* consumers, int factor) {
                 relay.turnOFF(4, consumers);
                 relay.turnON(2, consumers);
                 relay.turnON(3, consumers);
-            } else {
+            } else if (low(0.92)) {
                 if (needPower() <= 0) {
                     relay.turnON(4, consumers);
                 }
                 relay.turnON(2, consumers);
                 relay.turnON(3, consumers);
             }
-        } else {
+        } else if (low(0.47)) {
             relay.turnON(4, consumers);
-                if ((factor / 100) > 7.5) {
+                if (needPower() > 7500) {
                     relay.turnON(2, consumers);
                     relay.turnON(3, consumers);
-                } else if ((factor / 100) < 10) {
+                } else if (needPower() < -10000) {
                     relay.turnOFF(2, consumers);
                     relay.turnOFF(3, consumers);
                 }
         } 
     }
-}
-
-int returnPower (RelayData* consumers, RelayData wind, RelayData solar, InputAndOutput pzemClass) { // тут тоже может быть есть сомнительные моменты
-    return solar.current * solar.voltage + wind.current * wind.voltage + pzemClass.getA() * pzemClass.getV() - consumers[0].current * consumers[0].voltage - consumers[1].current * consumers[1].voltage - consumers[2].current * consumers[2].voltage;
 }
 
 void MaximumReliabilityWork(RelayData* consumers, int factor) {
@@ -324,17 +303,24 @@ void MaximumReliabilityWork(RelayData* consumers, int factor) {
                 relay.turnOFF(4, consumers);
                 relay.turnON(2, consumers);
                 relay.turnON(3, consumers);
-            } else {
+            } else if (low(0.92)) {
                 relay.turnON(4, consumers);
                 relay.turnON(2, consumers);
-                if ((factor / 100) > 7.5) {
+                if (needPower() > 7500) {
                     relay.turnON(3, consumers);
-                } else if ((factor / 100) < 10) {
+                } else if (needPower() < -10000) {
                     relay.turnOFF(3, consumers);
                 }
             }
-        } else {
-//???????????????????????????????????????????????????????????????
+        } else if (low(0.47)) {
+            relay.turnON(4, consumers);
+            if (needPower() > 7500) {
+                relay.turnON(2, consumers);
+                relay.turnON(3, consumers);
+            } else if (needPower() < -10000) {
+                relay.turnOFF(2, consumers);
+                relay.turnOFF(3, consumers);
+            }
         }
     } else {
         if (!low(0.5)) {
@@ -342,22 +328,22 @@ void MaximumReliabilityWork(RelayData* consumers, int factor) {
                 relay.turnOFF(4, consumers);
                 relay.turnON(2, consumers);
                 relay.turnON(3, consumers);
-            } else {
+            } else if (low(0.92)) {
                 relay.turnON(4, consumers);
-                if ((factor / 100) > 7.5) {
+                if (needPower() > 7500) {
                     relay.turnON(2, consumers);
                     relay.turnON(3, consumers);
-                } else if ((factor / 100) < 10) {
+                } else if (needPower() < -10000) {
                     relay.turnOFF(2, consumers);
                     relay.turnOFF(3, consumers);
                 }
             }
-        } else {
+        } else if (low(0.47)) {
             relay.turnON(4, consumers);
-            if ((factor / 100) > 7.5) {
+            if (needPower() > 7500) {
                 relay.turnON(2, consumers);
                 relay.turnON(3, consumers);
-            } else if ((factor / 100) < 10) {
+            } else if (needPower() < -10000) {
                 relay.turnOFF(2, consumers);
                 relay.turnOFF(3, consumers);
             }
@@ -410,6 +396,8 @@ void prepManufacturersData (double tmp, RelayData& manufacturers, int unit) {
 void setup() {
     Serial.begin(115200);
 
+    pinMode(14, OUTPUT);
+
     // Установка адреса модуля PZEM004T
     pzem.setAddress(pzemIP);
 
@@ -424,7 +412,7 @@ void loop() {
     while (!isConnectToServer) {
         //connect to server
         const uint16_t port = 2000; // port TCP server
-        const char * host = "192.168.3.10"; // ip or dns
+        const char * host = "192.168.3.8"; // ip or dns
         Serial.print("Connecting to ");
         Serial.println(host);
         // Use WiFiClient class to create TCP connections
@@ -504,68 +492,32 @@ void loop() {
 
                 if (millis() - timerBattery > 30000 || !isSendBattaryVoltage) {
                     timerBattery = millis();
-                    double batteryVoltageESP = analogRead(35) * 3.3 / 4096 * 5.3; //настоящие вольты //флур мб убрать
-                    batteryVoltage = batteryVoltageESP + (0.00028 * (1 + 0.0001 * (batteryVoltageESP - 12.5)) * (consumers[0].current + consumers[1].current + consumers[2].current - solar.current / 2 - wind.current / 2 - pzemClass.getA() * 4)); //мнимые вольты
+                    measuredBattary();
                     isSendBattaryVoltage = true;
                 }
 
-                // Serial.println(batteryVoltage);
+                prepSensorsData(int (ina219_A1.getBusVoltage_V() * 100)/100.0, consumers, 0, VOLTAGE);
+                prepSensorsData(int (ina219_A2.getBusVoltage_V() * 100)/100.0, consumers, 1, VOLTAGE);
+                prepSensorsData(int (ina219_A3.getBusVoltage_V() * 100)/100.0, consumers, 2, VOLTAGE);
 
-                int tmp_batteryVoltageToServer = analogRead(35);
+                prepSensorsData(int ((ina219_A1.getCurrent_mA() / 1000) * 100)/100.0, consumers, 0, CURRENT);
+                prepSensorsData(int ((ina219_A2.getCurrent_mA() / 1000) * 100)/100.0, consumers, 1, CURRENT);
+                prepSensorsData(int ((ina219_A3.getCurrent_mA() / 1000) * 100)/100.0, consumers, 2, CURRENT);
 
-                if (tmp_batteryVoltageToServer < 1500) {
-                    batteryVoltageToServer = 0;
-                } else {
-                    batteryVoltageToServer = tmp_batteryVoltageToServer;
-                }
-
-                double batteryVoltageESP = analogRead(35) * 3.3 / 4096 * 5.3; //настоящие вольты //флур мб убрать
-                //batteryVoltage = batteryVoltageESP + (0.00028 * (1 + 0.0001 * (batteryVoltageESP - 12.5)) * (consumers[0].current + consumers[1].current + consumers[2].current - solar.current / 2 - wind.current / 2 - pzemClass.getA() * 4)); //мнимые вольты
-
-                double Rinp = 0.03;
-                double KPD_2 = 0.5;
-                double KPD_1 = 0.5;
-                double KPD_3 = 1.2;
-                double PPower = ((wind.current * (wind.voltage - 0.6) + solar.current * (solar.voltage - 0.6)) * KPD_3+ pzemClass.getA() * pzemClass.getV() * KPD_1) - (consumers[0].current * consumers[0].voltage + consumers[1].current * consumers[1].voltage + consumers[2].current * consumers[2].voltage) * KPD_2;
-                bool pointer = false;
-                double batteryVoltagePrep = sqrt(abs(Rinp * PPower));// + batteryVoltageESP;
-                if (Rinp * PPower < 0) {
-                    batteryVoltage = batteryVoltagePrep * (-1) + batteryVoltageESP;
-                } else {
-                    batteryVoltage = batteryVoltagePrep + batteryVoltageESP;
-                }
-
-                Serial.println("PPower");
-                Serial.println(PPower);
-                Serial.println("PPower");
-
-                Serial.println("batteryVoltage");
-                Serial.println(batteryVoltage);
-                Serial.println("batteryVoltage");
-
-                Serial.println("solar.current");
-                Serial.println(solar.current);
-                Serial.println("solar.current");
-
-                prepSensorsData(ina219_A1.getBusVoltage_V(), consumers, 0, VOLTAGE);
-                prepSensorsData(ina219_A2.getBusVoltage_V(), consumers, 1, VOLTAGE);
-                prepSensorsData(ina219_A3.getBusVoltage_V(), consumers, 2, VOLTAGE);
-
-                prepSensorsData(ina219_A1.getCurrent_mA() / 1000, consumers, 0, CURRENT);
-                prepSensorsData(ina219_A2.getCurrent_mA() / 1000, consumers, 1, CURRENT);
-                prepSensorsData(ina219_A3.getCurrent_mA() / 1000, consumers, 2, CURRENT);
-
-                prepManufacturersData(ina219_B1.getBusVoltage_V(), wind, VOLTAGE);
-                prepManufacturersData(ina219_B2.getBusVoltage_V(), wind, VOLTAGE);
-                prepManufacturersData(pzem.voltage(pzemIP), generator, VOLTAGE);
+                prepManufacturersData(int (ina219_B1.getBusVoltage_V() * 100)/100.0, wind, VOLTAGE);
+                prepManufacturersData(int (ina219_B2.getBusVoltage_V() * 100)/100.0, wind, VOLTAGE);
+                prepManufacturersData(int (pzem.voltage(pzemIP) * 100)/100.0, generator, VOLTAGE);
                 pzemClass.setV(generator.voltage);
 
-                prepManufacturersData(ina219_B1.getCurrent_mA() / 1000, solar, CURRENT);
-                prepManufacturersData(ina219_B2.getCurrent_mA() / 1000, wind, CURRENT);
-                prepManufacturersData(pzem.current(pzemIP), generator, CURRENT);
+                prepManufacturersData(int ((ina219_B1.getCurrent_mA() / 1000) * 100)/100.0, solar, CURRENT);
+                prepManufacturersData(int ((ina219_B2.getCurrent_mA() / 1000) * 100)/100.0, wind, CURRENT);
+                prepManufacturersData(int ((pzem.current(pzemIP))* 100)/100.0, generator, CURRENT);
                 pzemClass.setA(generator.current);
 
+                double batteryVoltageToServer = int (batteryVoltage * 10) / 10.0;
+
                 std::pair<char*, int> result = encodeSensorsData(solar, wind, generator, batteryVoltageToServer, consumers);
+
                 char* AlreadyDataToServer = result.first;
                 int counterData = result.second;
 
